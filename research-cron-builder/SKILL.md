@@ -7,7 +7,9 @@ description: Build or repair a code-research cron for a repository using a gener
 
 ## Overview
 
-Build a code-only research pipeline that continuously reads source files, writes per-file or per-directory research docs into `Docs/researches/`, tracks progress in a generated checklist, rotates `kimi` keys, checkpoints progress, and removes its own cron entries when research is complete.
+Build a code-only research pipeline that continuously reads source files, writes research docs into `Docs/researches/`, tracks progress in a generated checklist, rotates `kimi` keys, checkpoints progress, and removes its own cron entries when research is complete.
+
+Final research artifacts must be one-to-one with the original researched files: every source file in scope must have exactly one per-file research document, even if files were grouped together for efficient worker prompts.
 
 ## Workflow
 
@@ -20,11 +22,23 @@ Build a code-only research pipeline that continuously reads source files, writes
    - `generate_daily_research_todo.sh`
    - `research_guard.sh`
    - `cleanup_research_cron.sh`
-5. Generate the checklist once, then verify it contains real pending items.
-6. Run the guard manually once before installing cron.
-7. Install cron only after the manual run proves the pipeline can claim work and write logs.
-8. If progress tables are broken, regenerate the checklist from repository state and reconcile `[x]` marks from existing research documents.
-9. On completion, remove cron entries and set the state file to `completed`.
+5. If small-file grouping is used, also create a deterministic split/index step that converts each completed group report into per-file reports.
+6. Generate the checklist once, then verify it contains real pending items and a manifest mapping every source file to exactly one work item.
+7. Run the guard manually once before installing cron.
+8. Install cron only after the manual run proves the pipeline can claim work and write logs.
+9. If progress tables are broken, regenerate the checklist from repository state and reconcile `[x]` marks from existing research documents.
+10. On completion, remove cron entries and set the state file to `completed` only after the per-file 1:1 output check passes.
+
+## Grouped Input, Per-File Output
+
+Workers may group many small files into a single prompt to reduce overhead. When doing so:
+- Group small files only at the research-input stage; the final artifact contract remains per-file.
+- Keep each group at or below 256 KiB of source input by default unless the user sets a different limit.
+- Put oversized single files in their own group.
+- Require each group prompt to return a separate, clearly titled section for every file in that group, in manifest order.
+- After a group completes, immediately split its report into `Docs/researches/files/<stable_slug>_research.md` so every original file gets its own research document.
+- Maintain `Docs/researches/file_research_index.tsv` with `source_path`, `research_file`, `group_id`, `group_research_file`, and `status`.
+- Treat the run as incomplete if any source file lacks a non-empty per-file research document or if any index row has a non-OK status.
 
 ## Required Components
 
@@ -37,14 +51,16 @@ Requirements:
 - Write atomically via a temp file then `mv`.
 - Exclude `.git/`, `.cron/`, `Docs/researches/`, caches, build outputs, and dependency directories.
 - Prefer code-only filtering unless the user explicitly wants doc research.
-- Represent work as `- [ ] [DIR] path` and `- [ ] [FILE] path`.
+- Represent ungrouped work as `- [ ] [FILE] path` or grouped work as `- [ ] [GROUP] group-id ...`.
+- For grouped work, write a stable manifest such as `Docs/researches/research_groups.tsv` that lists every file in each group and preserves group order.
+- The manifest must cover each in-scope file exactly once.
 
 ### Daily Todo Generator
 
 Create `Docs/researches/todos_YYYYMMDD.md` from the checklist.
 
 Requirements:
-- Show snapshot counts: done, pending, pending dirs, pending files.
+- Show snapshot counts: done, pending, pending groups/files, and total source files covered.
 - List only unchecked items.
 - If pending is zero, render a single completed line instead of an empty section.
 - Regenerate idempotently.
@@ -60,6 +76,8 @@ Requirements:
 - Rotate `kimi` keys on auth/quota/rate-limit failures.
 - Distinguish between `completed`, `idle_waiting`, `exec_failed`, `exec_timeout`, and `running_exec`.
 - Reconcile checklist marks from existing non-empty research docs.
+- For grouped input, split completed group reports into per-file reports before marking the run complete.
+- Do not set state to `completed` until the per-file output count equals the source file count and every index row is OK.
 - Commit checkpoint progress with `docs(research): ...` messages when appropriate.
 - Emit milestone notifications if the repository uses progress alerts.
 - Run cleanup when pending items reach zero and cleanup is enabled.
@@ -94,6 +112,8 @@ Always perform these checks before declaring the cron ready:
 - manual checklist generation
 - manual todo generation
 - one manual `research_guard.sh` run
+- if grouping is used, run the split/index step and verify `source_file_count == per_file_research_doc_count == file_research_index_rows`
+- sample several `file_research_index.tsv` rows and confirm each per-file document names the same source path and contains substantive content from the matching group section
 - `crontab -l` verification after install
 - log/state verification under `.cron/`
 
