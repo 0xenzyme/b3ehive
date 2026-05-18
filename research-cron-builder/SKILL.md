@@ -9,7 +9,7 @@ description: Build or repair a code-research cron for a repository using a gener
 
 Build a code-only research pipeline that continuously reads source files, writes research docs into `Docs/researches/`, tracks progress in a generated checklist, rotates `kimi` keys, checkpoints progress, and removes its own cron entries when research is complete.
 
-Final research artifacts must be one-to-one with the original researched files: every source file in scope must have exactly one per-file research document, even if files were grouped together for efficient worker prompts.
+Final research artifacts must be one-to-one with the original researched files and must preserve the source tree shape under `Docs/researches/`: every source file in scope must have exactly one per-file research document at `Docs/researches/<source_path>_research.md`, even if files were grouped together for efficient worker prompts. Every represented source folder must have exactly one folder report at `Docs/researches/<folder_path>/current_folder_research.md`; the repository root report is `Docs/researches/current_folder_research.md`.
 
 ## Workflow
 
@@ -22,7 +22,7 @@ Final research artifacts must be one-to-one with the original researched files: 
    - `generate_daily_research_todo.sh`
    - `research_guard.sh`
    - `cleanup_research_cron.sh`
-5. If small-file grouping is used, also create a deterministic split/index step that converts each completed group report into per-file reports.
+5. If small-file grouping is used, also create a deterministic split/index step that converts each completed group report into per-file reports at their source-tree-aligned paths.
 6. If oversized files are in scope, create a chunk manifest and a deterministic merge step that researches 256 KiB chunks before writing one merged per-file report.
 7. Generate folder-level research after file-level research completes, using the per-file research index as the source of truth.
 8. Generate the checklist once, then verify it contains real pending items and a manifest mapping every source file to exactly one work item or chunk set.
@@ -38,9 +38,10 @@ Workers may group many small files into a single prompt to reduce overhead. When
 - Keep each group at or below 256 KiB of source input by default unless the user sets a different limit.
 - Put oversized single files in their own group.
 - Require each group prompt to return a separate, clearly titled section for every file in that group, in manifest order.
-- After a group completes, immediately split its report into `Docs/researches/files/<stable_slug>_research.md` so every original file gets its own research document.
+- After a group completes, immediately split its report into `Docs/researches/<source_path>_research.md` so every original file gets its own research document in a path that mirrors the original repository tree.
 - Maintain `Docs/researches/file_research_index.tsv` with `source_path`, `research_file`, `group_id`, `group_research_file`, and `status`.
 - Treat the run as incomplete if any source file lacks a non-empty per-file research document or if any index row has a non-OK status.
+- Do not use opaque slug-only directories such as `Docs/researches/files/<slug>_research.md` for final per-file artifacts. Slugs are allowed only for internal temporary artifacts such as grouped reports or chunk reports.
 
 ## Oversized File Chunking, Per-File Merge
 
@@ -48,7 +49,7 @@ Files larger than the group input limit must not be sampled when the user asks f
 - Split each oversized file into ordered chunks at or below 256 KiB of source input by default, preferably on line boundaries.
 - Maintain `Docs/researches/chunk_manifest.tsv` with `source_path`, `chunk_id`, `chunk_order`, `chunk_start_line`, `chunk_end_line`, `chunk_research_file`, and `status`.
 - Prompt each chunk as a partial view of exactly one source file and require chunk reports to cover APIs, control flow, state, dependencies, risks, and unresolved cross-chunk references visible in that chunk.
-- After all chunks for a file are OK, merge their chunk reports into one `Docs/researches/files/<stable_slug>_research.md` document for the original file.
+- After all chunks for a file are OK, merge their chunk reports into one `Docs/researches/<source_path>_research.md` document for the original file.
 - The merged per-file report must explicitly say it was synthesized from chunks, preserve the original `source_path`, summarize whole-file purpose/exports/control flow/integration/risk, and include a compact chunk map.
 - Maintain only one final per-file row in `Docs/researches/file_research_index.tsv` for the original source file; chunk rows belong only in `chunk_manifest.tsv`.
 - Treat the run as incomplete if any oversized file has missing chunks, non-OK chunk rows, or a missing/non-empty merged per-file research document.
@@ -56,11 +57,23 @@ Files larger than the group input limit must not be sampled when the user asks f
 ## Folder-Level Research
 
 After file-level research is complete, create folder-level code-function summaries:
-- Generate `Docs/researches/folders/<stable_slug>_folder_research.md` for every folder represented by researched files, including the repository root.
+- Generate `Docs/researches/<folder_path>/current_folder_research.md` for every folder represented by researched files, including the repository root as `Docs/researches/current_folder_research.md`.
 - Maintain `Docs/researches/folder_research_index.tsv` with `folder_path`, `research_file`, `direct_file_count`, `recursive_file_count`, `direct_child_folder_count`, and `status`.
 - Derive folder summaries from `file_research_index.tsv` and the per-file research docs unless the user explicitly asks for a second model pass over folder contents.
 - Each folder report should include child folders, direct files, recursive purpose signals, integration signals, risk/test signals, and an explicit note when its role is inferred from file-level research rather than direct folder-level model reading.
 - Treat the run as incomplete if any represented folder lacks a non-empty folder research document or if any folder index row has a non-OK status.
+
+## Required Output Layout
+
+The final research tree must visually mirror the original repository tree.
+
+Required examples:
+- Source file `src/app/main.ts` -> `Docs/researches/src/app/main.ts_research.md`
+- Source file `.github/workflows/ci.yml` -> `Docs/researches/.github/workflows/ci.yml_research.md`
+- Source folder `src/app` -> `Docs/researches/src/app/current_folder_research.md`
+- Repository root folder `.` -> `Docs/researches/current_folder_research.md`
+
+Validation must fail if final file reports live only under slug buckets such as `Docs/researches/files/` or final folder reports live only under `Docs/researches/folders/`. Internal grouped/chunk reports may remain in `Docs/researches/groups/` and `Docs/researches/chunks/`, but `file_research_index.tsv` and `folder_research_index.tsv` must point to the source-tree-aligned final report paths.
 
 ## Required Components
 
@@ -138,9 +151,9 @@ Always perform these checks before declaring the cron ready:
 - manual checklist generation
 - manual todo generation
 - one manual `research_guard.sh` run
-- if grouping is used, run the split/index step and verify `source_file_count == per_file_research_doc_count == file_research_index_rows`
+- if grouping is used, run the split/index step and verify `source_file_count == per_file_research_doc_count == file_research_index_rows`, where `per_file_research_doc_count` counts only `Docs/researches/<source_path>_research.md` final artifacts
 - if oversized files are chunked, verify every `chunk_manifest.tsv` row is OK and every oversized source file has exactly one merged per-file research document
-- run folder research generation and verify `folder_research_index_rows == folder_research_doc_count` with all rows OK
+- run folder research generation and verify `folder_research_index_rows == folder_research_doc_count` with all rows OK, where folder docs are `current_folder_research.md` files in source-tree-aligned directories
 - sample several `file_research_index.tsv` rows and confirm each per-file document names the same source path and contains substantive content from the matching group section
 - sample at least one folder report and confirm it lists real child folders/files and derives signals from matching per-file docs
 - `crontab -l` verification after install
