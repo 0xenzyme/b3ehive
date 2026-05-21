@@ -50,6 +50,34 @@ Do not silently commit these unless the repo's policy explicitly requires it.
 - After each successful push, run local authoritative sync again and verify local HEAD equals remote tracking HEAD.
 - If local repo has dirty tracked files, detached HEAD, non-fast-forward divergence, or sync/network failure: block the tick and surface a clear error.
 - Do not treat "push succeeded but local sync failed" as success.
+- If dirty tracked files exist while worker processes are live, block protectively and do not stash active work.
+- If dirty tracked files exist and no worker process is live, stash with an audit name before attempting sync.
+- Never auto-pop a recovery stash in the success path; conflicts from applying preserved work require explicit operator repair.
+
+## Worker clone boundary rule
+
+- If a worker runs inside `.cron/automation_repo*`, its prompt must name that clone as `Repository root`.
+- The prompt must explicitly say the worker should work only inside that automation clone.
+- The prompt must explicitly forbid direct edits to the scheduler's authoritative checkout.
+- Stable paths inside committed artifacts must stay repository-relative; clone absolute paths are allowed only in the private prompt/log surface.
+- A prompt that names the main checkout while the process runs in an automation clone is invalid because it can dirty the scheduler checkout and break sync-first guarantees.
+
+## Claim ledger rule
+
+- Claims are live reservations, not completion evidence.
+- Release claims for items already marked `[x]` in the authoritative blueprint.
+- Release claims for still-open items when the assigned worker process is no longer alive.
+- Keep claims for still-open items only when the assigned worker process is live.
+- Write released claims to an audit ledger with release time, original claim time, item id, worker id, and title.
+- Use self-match-safe process patterns such as `[c]odex exec...`; do not let the guard's own `pgrep` command count as a worker.
+- Prune stale claims before sync and after sync so a dirty checkout cannot pin stale reservations indefinitely.
+
+## First-open selection rule
+
+- Determine the first still-open layer or cluster from the authoritative blueprint before filtering claims.
+- Spawn only unclaimed items from that first-open layer or cluster.
+- If every item in the first-open layer is claimed by live workers, spawn nothing from later layers in that tick.
+- Never select the first unclaimed layer, because stale or live claims in a lower layer would let upper-layer work run too early.
 
 ## Lock hygiene rule
 

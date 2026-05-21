@@ -67,6 +67,15 @@ Default commit posture is code-first: never commit cron/private artifacts, never
    - explicitly close the lock fd on those launches (for example `9>&-`) before `tmux` starts its server/client process tree
    - keep scheduler/global state separate from worker/slot state so a no-focus worker cannot overwrite the scheduler's authoritative status
    - if a historical lock was already leaked into a long-lived `tmux` server, rotate the lock path version or restart the affected `tmux` server/session before resuming cron
+19. Ensure worker prompts use the actual automation clone as `Repository root`.
+   If a worker process is launched with `cd .cron/automation_repo_slotN`, the prompt must name that clone path as the repository root and explicitly forbid direct edits to the scheduler's authoritative checkout.
+   Never put the main checkout path in a worker prompt unless the worker is intentionally running in the main checkout.
+20. Treat claim and dirty-sync recovery as part of the guard, not manual cleanup:
+   - release claims for items that are already closed in the authoritative blueprint
+   - release claims for still-open items when the assigned worker process is no longer alive
+   - detect active workers with self-match-safe process patterns such as `[c]odex exec...`
+   - if the main checkout has tracked dirty files and no active workers, stash with an audit label before syncing
+   - if tracked dirty files exist while workers are active, block protectively instead of stashing their live work
 
 ## Required Components
 
@@ -97,6 +106,11 @@ Requirements:
 - Before each worker batch: `fetch + pull --ff-only` or `fetch + rebase` against the authoritative branch.
 - After each worker batch: `rebase/resolve within owned scope -> push`.
 - Local authoritative repo must also stay synced (`fetch + merge --ff-only`) so "remote updated but local stale" is impossible by design.
+- Worker prompt root rule:
+  - the prompt's `Repository root` must equal the automation clone path where the command is launched
+  - include a line like `Work only inside this worker automation clone: <clone path>`
+  - include a line like `Do not edit the scheduler's authoritative checkout directly: <main checkout path>`
+  - generated todos, evidence paths, and blueprint references inside committed files must remain stable repo-relative paths, not clone absolute paths
 
 ### Execution Guard
 
@@ -106,6 +120,9 @@ Requirements:
 - Enforce a single blueprint source.
 - Enforce one authoritative execution checklist inside that blueprint.
 - Select only the first still-open cluster and keep each run bounded.
+- Select the first still-open cluster before removing claimed items.
+  If every item in that first-open cluster is currently claimed by a live worker, spawn no upper-cluster work in that tick.
+  Do not choose the first unclaimed cluster; that skips lower-layer blockers and violates strict layer execution.
 - For file-level fragmented work, enforce small-file merge batching:
   - prefer same-directory grouping
   - total source bytes per batch <=100KB
@@ -133,6 +150,18 @@ Requirements:
   - post-push sync check: local authoritative repo must fast-forward to and match remote HEAD
   - never swallow sync errors with `|| true` on the success path
   - when blocked by local tracked changes, prefer a bounded `repo force sync` (`stash -u` -> sync -> `stash pop`) before escalating to manual intervention
+- Enforce live claim hygiene:
+  - claims are reservations, not proof of progress
+  - remove claims for completed blueprint items
+  - remove claims for open items whose worker pid/process is gone
+  - keep claims for open items whose worker process is still live
+  - append released claims to an audit ledger with timestamp, original claim time, item id, and worker id
+  - run stale-claim pruning before sync and again after sync, so a dirty main checkout cannot trap stale reservations forever
+- Enforce safe dirty-sync behavior:
+  - if tracked dirty files exist and active workers are still running, write a clear `blocked_sync` state and leave the worktree untouched
+  - if tracked dirty files exist and no worker is active, create an audit-named `git stash push -u`, then `fetch --prune` and `merge --ff-only`
+  - after syncing, verify local HEAD equals upstream HEAD before spawning workers
+  - never auto-apply a stash during the success path; stash-pop conflicts require explicit operator repair
 - For 2-worker mode, use a scheduler lock plus worker-specific locks.
 - When lock files are managed with `flock`, treat lock-fd inheritance as a first-class failure mode:
   - close the held lock fd before every `tmux` spawn/respawn path

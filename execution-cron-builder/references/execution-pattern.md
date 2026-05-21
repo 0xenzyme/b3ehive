@@ -32,13 +32,24 @@
    - close the held lock fd before `tmux new-session`, `tmux new-window`, and `tmux respawn-pane` so the `tmux` server cannot inherit and pin the lock
    - keep scheduler/global state separate from worker/slot state files
    - if a stale `tmux` server already inherited the lock, rotate the lock-file version or kill/restart that server before the next tick
-13. Sync the main blueprint and today's todo after each successful batch.
-14. Enforce documentation reconciliation after every completion backfill:
+13. Make worker prompts clone-accurate:
+   - if the worker command runs in `.cron/automation_repo_slotN`, the prompt must say `Repository root: <that automation clone>`
+   - explicitly instruct the worker to work only inside that clone
+   - explicitly forbid direct edits to the scheduler's authoritative checkout
+   - committed artifacts must still use stable repo-relative paths, not automation clone absolute paths
+14. Treat claims as live reservations:
+   - prune claims for items that are already `[x]`
+   - prune claims for `[ ]` items when the assigned worker process is gone
+   - keep claims only when the item is open and the assigned worker is still live
+   - log every released claim to an audit ledger
+   - use self-match-safe process checks such as `[c]odex exec...`
+15. Sync the main blueprint and today's todo after each successful batch.
+16. Enforce documentation reconciliation after every completion backfill:
    - if a batch closes checklist items, it must update every required status surface in the same batch (for example: authoritative blueprint + stage blueprint mirror + today's todo)
    - todo entries must point to stable repository paths (never automation clone absolute paths) so diffs stay reviewable and do not leak local runtime paths
    - treat "code done but blueprint/todo stale" as an execution failure, not a cosmetic issue
-15. If the same `[ ]` item remains unresolved for repeated ticks (default >=5), auto-split it into child checklist items, regenerate today's todo, and notify the human clearly.
-16. Remove cron when complete.
+17. If the same `[ ]` item remains unresolved for repeated ticks (default >=5), auto-split it into child checklist items, regenerate today's todo, and notify the human clearly.
+18. Remove cron when complete.
 
 ## Two-worker pattern
 
@@ -59,6 +70,8 @@ Use this only when one worker is leaving material throughput on the table and th
 - Keep blueprint/todo mutation centralized to one integration lane after honest validation on the combined tree.
 - Re-sync or mirror the authoritative local repo after successful worker pushes so future blueprint seeding does not revert checkmarks and today's todo stays current.
 - Track repeated unresolved checklist items; if one item survives >=5 ticks unresolved, split it into child checklist items and keep execution on that branch until children close.
+- Never let worker prompts name the scheduler checkout as `Repository root` when the worker process is actually launched inside an automation clone. This mistake causes workers to dirty the main checkout, creates false sync blocks, and defeats clone isolation.
+- When selecting work, find the first still-open layer/cluster before filtering claims. If all items in that first-open layer are claimed by live workers, do not spawn work from later layers.
 
 ## Blueprint surface styles
 
@@ -86,11 +99,13 @@ Allowed only as a convenience mirror after the authoritative blueprint checklist
 
 - multiple requirement sources leaking into the prompt
 - dirty automation repo blocking every tick
+- worker prompt points at the main checkout while the command runs in an automation clone, so workers dirty the scheduler checkout directly
 - local-only docs/tests accidentally being committed
 - `.cron/`/log/state artifacts accidentally being committed
 - docs-only commits or docs volume outgrowing code volume
 - historical tracked local-only files not being cleaned, causing repeated accidental staging
 - starting implementation while local development machine HEAD is stale versus remote
+- local authoritative checkout has tracked dirty files from old or misprompted workers and the guard has no safe auto-stash/sync path
 - push succeeded but local authoritative repo stayed stale due swallowed sync failure
 - `tmux` server inherited the scheduler `flock` fd, so future ticks report "previous run still active" even though no real scheduler is running
 - claiming model/algorithm completion with mock downloads or fake inference paths
@@ -99,11 +114,23 @@ Allowed only as a convenience mirror after the authoritative blueprint checklist
 - repeated empty no-op runs after blueprint completion
 - repeated real commits with zero checklist movement because the cron keeps hammering one non-closable cluster
 - repeated unresolved checklist items without automatic split into executable child items
+- stale claims reserve open items for 24h even though the worker exited or failed
+- first-unclaimed selection skips a lower open cluster and starts upper-cluster work
+- process checks match the guard's own `pgrep` command and falsely report active workers
 - worker clones pushing code while the authoritative local repo blueprint stays stale, causing later seed steps to roll completed checkmarks back
 - worker clones updating the automation repo todo while the main repo todo stays stale, leaving humans with the wrong completion picture
 - todo snapshots embedding `.cron/automation_repo*` absolute paths, causing noisy diffs and misleading progress references
 - implementation merged while blueprint/todo completion surfaces stayed stale, creating false "not done" reports
 - allowing both workers to edit root manifests or blueprint files directly, creating avoidable merge conflicts
+
+## Dirty sync and stale claim recovery
+
+- At tick start, prune stale claims before sync and again after sync.
+- If the main checkout is tracked-dirty while live workers exist, block protectively and do not stash.
+- If the main checkout is tracked-dirty and no live workers exist, run an audit-named `git stash push -u`, then `fetch --prune` and `merge --ff-only`.
+- Do not auto-pop the stash on the success path. Stash pop conflicts require explicit repair.
+- After every recovery sync, verify local HEAD equals upstream HEAD before spawning workers.
+- Treat a successful push plus failed local sync as blocked, not successful.
 
 ## Lock leak recovery
 
