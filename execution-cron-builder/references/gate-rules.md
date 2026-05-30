@@ -90,6 +90,8 @@ Do not silently commit these unless the repo's policy explicitly requires it.
 
 - before the first cron tick, initialize the authoritative execution checklist in the blueprint with all `[ ]` marks
 - daily todos must derive from that authoritative blueprint checklist
+- daily todos must include the current DAG for unfinished checklist items, including dependencies, ready/blocked state, claim owner, owned paths, and ready frontier
+- todo DAG generation must fail on cycles, duplicate node ids, or dependencies that point to missing checklist items
 - after each successful batch, backfill the authoritative blueprint checkmarks and refresh today's todo in the main repo
 - if the same `[ ]` item remains unresolved for repeated ticks (default >=5), auto-split it into child checklist items and report the split clearly to the human
 - if all child checklist items become `[x]`, parent checklist item must auto-close to `[x]`; if any child is `[ ]`, parent must remain `[ ]`
@@ -114,10 +116,20 @@ When the blueprint is fully checked and validation passes:
 - leave final state as `completed` or `paused` only after cleanup verification
 - do not continue waking the repo for empty no-op batches
 
-## Parallel lane rule
+## Main session rule
 
-When execution uses 2 workers:
-- only one lane may close blueprint/todo checkmarks
-- the other lane should land code plus validation evidence only
-- both lanes must sync from origin before work and rebase before push
-- never allow both lanes to own the same path family
+- Treat the main session as worker id `main-session` when a user goal is active.
+- The main session may claim ready DAG items and do implementation work directly.
+- The main session is the default owner for validating, integrating, and clearing merge/rebase conflicts caused when worker worktrees or branches are merged back to `main`.
+- Conflict cleanup must preserve both worker and upstream intent where possible, run the relevant validation gates, and checkpoint only a coherent merged tree.
+
+## DAG adaptive lane rule
+
+When execution uses tmux workers:
+- newly launched `tmux` codex workers must set `service_tier=flex`
+- worker count must be computed from `min(user_max_concurrency, ready_independent_item_count, disjoint_path_lane_count)`, minus live workers and main-session claims
+- only one integration owner may close blueprint/todo checkmarks after combined validation
+- other workers should land code plus validation evidence only
+- every lane must sync from origin before work and rebase before push
+- never allow two live lanes to own the same path family
+- never spawn work outside the current DAG ready frontier
