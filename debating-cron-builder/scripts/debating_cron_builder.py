@@ -4,6 +4,7 @@ import concurrent.futures
 import datetime as dt
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 
@@ -25,6 +26,47 @@ def write_text(path, text):
     path = pathlib.Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text((text or "").strip() + "\n", encoding="utf-8")
+
+
+def truncate_text(text, max_bytes):
+    if max_bytes <= 0:
+        return text or ""
+    data = (text or "").encode("utf-8", errors="replace")
+    if len(data) <= max_bytes:
+        return text or ""
+    marker = f"[output truncated to last {max_bytes} bytes]\n"
+    tail = data[-max_bytes:]
+    return marker + tail.decode("utf-8", errors="replace")
+
+
+def ensure_output_budget(output, max_mb):
+    if max_mb <= 0:
+        return
+    output = pathlib.Path(output)
+    if not output.exists():
+        return
+    max_bytes = max_mb * 1024 * 1024
+    for path in output.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            if path.stat().st_size <= max_bytes:
+                continue
+            data = path.read_bytes()[-max_bytes:]
+            tmp = path.with_suffix(path.suffix + ".tmp")
+            tmp.write_bytes(f"[file truncated to last {max_bytes} bytes]\n".encode("utf-8") + data)
+            tmp.replace(path)
+        except OSError:
+            continue
+
+
+def require_free_space(path, min_free_gb):
+    if min_free_gb <= 0:
+        return
+    usage = shutil.disk_usage(path)
+    free_gb = usage.free // (1024 ** 3)
+    if free_gb < min_free_gb:
+        raise RuntimeError(f"only {free_gb}GiB free at {path}; need at least {min_free_gb}GiB")
 
 
 def run_paths(root, run_id):
@@ -174,9 +216,11 @@ def run_agent(args, *, agent_id, run_id, stage, prompt, output_file):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    output = completed.stdout.strip()
-    if completed.stderr.strip():
-        output = (output + "\n\nSTDERR:\n" + completed.stderr.strip()).strip()
+    max_bytes = args.max_output_mb * 1024 * 1024
+    output = truncate_text(completed.stdout.strip(), max_bytes)
+    stderr = truncate_text(completed.stderr.strip(), max_bytes)
+    if stderr:
+        output = (output + "\n\nSTDERR:\n" + stderr).strip()
     if completed.returncode != 0:
         raise RuntimeError(output or f"command failed with exit code {completed.returncode}")
     return output
@@ -185,6 +229,7 @@ def run_agent(args, *, agent_id, run_id, stage, prompt, output_file):
 def orchestrate(args):
     output = pathlib.Path(args.output or f"debating-runs/{dt.datetime.now().strftime('%Y%m%d-%H%M%S')}")
     args.output = str(output)
+    require_free_space(output.parent if output.parent != pathlib.Path("") else pathlib.Path("."), args.min_free_gb)
     plan = build_plan(args.task, output)
     for run in plan["runs"]:
         run["paths"]["implementation_dir"].mkdir(parents=True, exist_ok=True)
@@ -200,6 +245,7 @@ def orchestrate(args):
                 write_text(run["paths"]["result"], future.result())
             except Exception as exc:
                 write_text(run["paths"]["failure"], str(exc))
+        ensure_output_budget(output, args.max_output_mb)
 
     if all(read_text(run["paths"]["failure"]) and not read_text(run["paths"]["result"]) for run in plan["runs"]):
         write_text(output / "summary.md", "# Debating Cron Failed\n\nAll three implementation agents failed.")
@@ -248,6 +294,7 @@ def orchestrate(args):
         final_repairs.extend([f"## {run['id']}", read_text(run["paths"]["final_repair"]) or "(empty)", ""])
     write_text(output / "final_repairs.md", "\n".join(final_repairs))
     write_text(output / "summary.md", f"# Debating Cron Summary\n\nTask: {plan['task']}\nBest run: {best}\nOutput: {output}")
+    ensure_output_budget(output, args.max_output_mb)
     return output, best
 
 
@@ -258,6 +305,8 @@ def main(argv=None):
     parser.add_argument("--runner", choices=["mock", "command"], default="mock")
     parser.add_argument("--command", default="")
     parser.add_argument("--verifier-agent", default="verifier")
+    parser.add_argument("--max-output-mb", type=int, default=20)
+    parser.add_argument("--min-free-gb", type=int, default=30)
     args = parser.parse_args(argv)
     output, best = orchestrate(args)
     print(f"Debating cron complete")

@@ -48,7 +48,8 @@ Explain the decision briefly.
 ## Real Agent Runner Advice
 
 - Use unique sessions per `run_id + stage`.
-- Capture stdout/stderr into files even when the runner fails.
+- Capture stdout/stderr into files even when the runner fails, but keep output bounded with `--max-output-mb` when using the bundled script.
 - Pass large artifacts by file path when possible instead of embedding entire long outputs.
 - Keep the default round count bounded. Two critique passes is enough for most work.
 - Prefer patches under `run_x/implementation` over direct source edits when agents run in parallel.
+- When this workflow is launched by cron, run a space guard first: require at least 30GB free, cap `.log`/`.out`/`.err` files, delete old logs after 3 days, and keep the run root under an explicit size budget.

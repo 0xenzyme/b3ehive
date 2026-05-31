@@ -18,7 +18,8 @@ Example philosophies:
 4. Run parallel `tmux` workers with `codex exec`.
 5. Require one focused research doc per checklist item.
 6. Merge section snapshots back into the main blueprint.
-7. Remove cron when all items are complete.
+7. Run a cron space guard before worker spawn.
+8. Remove cron when all items are complete.
 
 ## Completion rule
 
@@ -38,6 +39,17 @@ An AR item is complete only when:
 - `.cron/*slot*.state`
 - `.cron/*slot*.prompt.txt`
 - `.cron/*slot*.last_message.txt`
+- `.cron/scripts/cron_space_guard.sh`
+
+## Space and log budget
+
+Every optimization guard tick must run a bounded cleanup helper before launching or respawning workers.
+
+- Use environment-overridable defaults: `MIN_FREE_GB=30`, `DANGER_FREE_GB=15`, `MAX_LOG_MB=20`, `MAX_KEEPALIVE_MB=5`, `LOG_RETENTION_DAYS=3`, `WORKSPACE_TTL_HOURS=48`, `MAX_CRON_ROOT_GB=30`.
+- Trim active logs by keeping the tail with `tail -c` and atomic `mv`; avoid unbounded guard or keepalive logs.
+- Delete `.log`, `.out`, and `.err` files older than 3 days under the cron root.
+- Remove only stale workspaces whose paths are not referenced by live `codex`, `tmux`, shell, pid, or lock state.
+- If cleanup cannot bring free space and cron-root size back under budget, write `blocked_disk_space` and skip worker spawn.
 
 ## Common failure modes
 
@@ -45,3 +57,4 @@ An AR item is complete only when:
 - workers overlapping the same section
 - docs marked complete even though they ignore the design philosophy
 - cron artifacts left behind after completion
+- unbounded worker logs or stale workspaces consuming local disk

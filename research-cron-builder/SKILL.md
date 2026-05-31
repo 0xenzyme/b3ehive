@@ -22,14 +22,15 @@ Final research artifacts must be one-to-one with the original researched files a
    - `generate_daily_research_todo.sh`
    - `research_guard.sh`
    - `cleanup_research_cron.sh`
-5. If small-file grouping is used, also create a deterministic split/index step that converts each completed group report into per-file reports at their source-tree-aligned paths.
-6. If oversized files are in scope, create a chunk manifest and a deterministic merge step that researches 256 KiB chunks before writing one merged per-file report.
-7. Generate folder-level research after file-level research completes, using the per-file research index as the source of truth.
-8. Generate the checklist once, then verify it contains real pending items and a manifest mapping every source file to exactly one work item or chunk set.
-9. Run the guard manually once before installing cron.
-10. Install cron only after the manual run proves the pipeline can claim work and write logs.
-11. If progress tables are broken, regenerate the checklist from repository state and reconcile `[x]` marks from existing research documents.
-12. On completion, remove cron entries and set the state file to `completed` only after the per-file 1:1 output check and folder-level index check pass.
+5. Also create `.cron/scripts/cron_space_guard.sh` and call it at the top of every `research_guard.sh` tick before spawning workers.
+6. If small-file grouping is used, also create a deterministic split/index step that converts each completed group report into per-file reports at their source-tree-aligned paths.
+7. If oversized files are in scope, create a chunk manifest and a deterministic merge step that researches 256 KiB chunks before writing one merged per-file report.
+8. Generate folder-level research after file-level research completes, using the per-file research index as the source of truth.
+9. Generate the checklist once, then verify it contains real pending items and a manifest mapping every source file to exactly one work item or chunk set.
+10. Run the guard manually once before installing cron.
+11. Install cron only after the manual run proves the pipeline can claim work, write bounded logs, and pass the disk/log budget guard.
+12. If progress tables are broken, regenerate the checklist from repository state and reconcile `[x]` marks from existing research documents.
+13. On completion, remove cron entries and set the state file to `completed` only after the per-file 1:1 output check and folder-level index check pass.
 
 ## Grouped Input, Per-File Output
 
@@ -107,6 +108,15 @@ The guard owns runtime behavior.
 
 Requirements:
 - Maintain `.cron/research_guard.state`, `.cron/research_guard.log`, `.cron/research_guard.block_count`.
+- Enforce disk/log safety on every tick before worker spawn:
+  - default `MIN_FREE_GB=30`; if the Data/root volume has less free space, run cleanup and refuse to start new workers
+  - default `DANGER_FREE_GB=15`; if below this, write state `blocked_disk_space` and exit immediately after lightweight cleanup
+  - default `MAX_LOG_MB=20` for worker logs and `MAX_KEEPALIVE_MB=5` for keepalive/scheduler logs; keep only the tail when files exceed the cap
+  - default `LOG_RETENTION_DAYS=3`; delete old `.log`, `.out`, and `.err` files under the cron root
+  - default `WORKSPACE_TTL_HOURS=48`; remove only stale, non-live `.cron/automation_repo*` or `.cron/**/workspaces/slot*` directories
+  - default `MAX_CRON_ROOT_GB=30`; if the cron root remains above this after cleanup, refuse new worker spawn
+  - never delete a workspace whose path is referenced by a live `codex exec`, `tmux`, shell, or lock/pid file
+  - write cleanup decisions to a bounded janitor log, not to an unbounded cron log
 - Support `tmux` worker fan-out for parallel research.
 - Claim work under a lock so workers do not duplicate batches.
 - Rotate `kimi` keys on auth/quota/rate-limit failures.
@@ -120,6 +130,19 @@ Requirements:
 - Commit checkpoint progress with `docs(research): ...` messages when appropriate.
 - Emit milestone notifications if the repository uses progress alerts.
 - Run cleanup when pending items reach zero and cleanup is enabled.
+
+### Cron Space Guard
+
+Every generated research cron must include a repo-local janitor script, for example `.cron/scripts/cron_space_guard.sh`, and call it from the top of `research_guard.sh`.
+
+Minimum behavior:
+- determine the cron root from the script path, not from the caller's current directory
+- cap active logs by preserving the last `MAX_LOG_MB` with `tail -c`, using a temp file plus atomic `mv`
+- rotate or truncate scheduler redirection targets such as `keepalive.log` before appending more output
+- clean old logs and stale workspaces before checking the cron-root budget
+- verify live worker paths with self-match-safe process checks before deleting any automation repo or workspace
+- return a distinct nonzero code for "budget exceeded" so the guard can exit without marking research complete
+- keep all defaults overrideable via environment variables
 
 ### Cleanup Script
 

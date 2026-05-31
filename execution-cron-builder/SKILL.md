@@ -86,6 +86,8 @@ Default orchestration posture is split-lane DAG aware: tmux workers claim implem
    - detect active workers with self-match-safe process patterns such as `[c]odex exec...`
    - if the main checkout has tracked dirty files and no active workers, stash with an audit label before syncing
    - if tracked dirty files exist while workers are active, block protectively instead of stashing their live work
+24. Add a disk/log budget guard before installing or repairing cron.
+   The guard must run at the start of every scheduler tick, before spawning workers, and must block new workers when budgets are exceeded.
 
 ## Required Components
 
@@ -137,6 +139,15 @@ Requirements:
 
 Requirements:
 - Maintain `.cron/*state`, log, block-count, pending-checkpoint, and last-message files.
+- Enforce disk/log safety on every tick before worker spawn:
+  - default `MIN_FREE_GB=30`; if the Data/root volume has less free space, run cleanup and refuse to start new workers
+  - default `DANGER_FREE_GB=15`; if below this, write state `blocked_disk_space` and exit immediately after lightweight cleanup
+  - default `MAX_LOG_MB=20` for worker logs and `MAX_KEEPALIVE_MB=5` for keepalive/scheduler logs; keep only the tail when files exceed the cap
+  - default `LOG_RETENTION_DAYS=3`; delete old `.log`, `.out`, and `.err` files under the cron root
+  - default `WORKSPACE_TTL_HOURS=48`; remove only stale, non-live `.cron/automation_repo*` or `.cron/**/workspaces/slot*` directories
+  - default `MAX_CRON_ROOT_GB=30`; if the cron root remains above this after cleanup, refuse new worker spawn
+  - never delete a workspace whose path is referenced by a live `codex exec`, `tmux`, shell, or lock/pid file
+  - write cleanup decisions to a bounded janitor log, not to an unbounded cron log
 - Skip overlap if another `codex exec` is already running in the same worker repo.
 - Enforce a single blueprint source.
 - Enforce one authoritative execution checklist inside that blueprint.
@@ -202,6 +213,19 @@ Requirements:
   - the main session owns integration closure, validation, dependency gating, and merge/conflict repair by default
   - no worker may claim outside the current ordered DAG claim frontier, but workers may produce provisional output for nodes whose dependencies are not yet integrated
 - Only the integration owner should update the authoritative blueprint/todo after integrated validation; other workers should land code and evidence only.
+
+### Cron Space Guard
+
+Every generated execution cron must include a repo-local janitor script, for example `.cron/scripts/cron_space_guard.sh`, and call it from the top of the scheduler before any `tmux` or `codex exec` launch.
+
+Minimum behavior:
+- determine the cron root from the script path, not from the caller's current directory
+- cap active logs by preserving the last `MAX_LOG_MB` with `tail -c`, using a temp file plus atomic `mv`
+- rotate or truncate scheduler redirection targets such as `keepalive.log` before appending more output
+- clean old logs and stale workspaces before checking the cron-root budget
+- verify live worker paths with self-match-safe process checks before deleting any automation repo or workspace
+- return a distinct nonzero code for "budget exceeded" so the scheduler can exit without treating the tick as completed work
+- keep all defaults overrideable via environment variables
 
 ### Cleanup Script
 

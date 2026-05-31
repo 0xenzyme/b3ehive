@@ -52,6 +52,7 @@ For code migrations, prefer a runnable target package or module tree under a tar
    - daily todo generator
    - migration execution/status helper
    - migration guard
+   - cron space/log guard
    - worker runner
    - cron installer
    - cron cleanup script
@@ -61,7 +62,7 @@ For code migrations, prefer a runnable target package or module tree under a tar
 8. Validate every target artifact before copying or syncing it back into the authoritative repo.
 9. Defer repeat validation failures within each shard so fresh items keep flowing.
 10. Run the guard manually before installing cron.
-11. Install cron only after checklist generation, todo generation, status reporting, and one manual worker pass all succeed.
+11. Install cron only after checklist generation, todo generation, status reporting, one manual worker pass, and one disk/log budget guard pass all succeed.
 12. Remove only this migration cron when all checklist items are complete and cleanup gates pass.
 
 ## Migration Spec
@@ -197,11 +198,33 @@ Do not mark a migration item complete for:
 - Default model: `gpt-5.4`.
 - Default reasoning effort: `xhigh`.
 - Scheduler should only spawn one worker per slot when its pid is not alive.
+- Every scheduler tick must run a repo-local cron space guard before spawning workers:
+  - default `MIN_FREE_GB=30`; if the Data/root volume has less free space, run cleanup and refuse to start new workers
+  - default `DANGER_FREE_GB=15`; if below this, write state `blocked_disk_space` and exit after lightweight cleanup
+  - default `MAX_LOG_MB=20` for worker logs and `MAX_KEEPALIVE_MB=5` for scheduler logs; keep only the tail when files exceed the cap
+  - default `LOG_RETENTION_DAYS=3`; delete old `.log`, `.out`, and `.err` files under the cron root
+  - default `WORKSPACE_TTL_HOURS=48`; remove only stale, non-live `.cron/automation_repo*` or `.cron/**/workspaces/slot*` directories
+  - default `MAX_CRON_ROOT_GB=30`; if the cron root remains above this after cleanup, refuse new worker spawn
+  - never delete a workspace whose path is referenced by a live worker process, pid file, lock file, or `tmux` session
+  - write cleanup decisions to a bounded janitor log, not to an unbounded cron log
 - Workers must write only the target artifact(s) assigned by the current checklist item.
 - Workers must not edit source artifacts.
 - Scheduler progress should be queryable via a machine-readable status command.
 - Keep failed items in the checklist with a failure ledger instead of repeatedly blocking the same shard.
 - Sync only validated outputs into the authoritative repo.
+
+## Cron Space Guard
+
+Every generated migration cron must include `.cron/scripts/cron_space_guard.sh` or an equivalent helper and call it from the top of the migration guard.
+
+Minimum behavior:
+- determine the cron root from the script path, not from the caller's current directory
+- cap active logs by preserving the last `MAX_LOG_MB` with `tail -c`, using a temp file plus atomic `mv`
+- rotate or truncate scheduler redirection targets such as `keepalive.log` before appending more output
+- clean old logs and stale workspaces before checking the cron-root budget
+- verify live worker paths with self-match-safe process checks before deleting any automation repo or workspace
+- return a distinct nonzero code for "budget exceeded" so the guard can exit without marking migration progress
+- keep all defaults overrideable via environment variables
 
 ## Cleanup Gate
 

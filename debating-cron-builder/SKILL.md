@@ -22,7 +22,8 @@ Prefer the bundled script:
 python3 scripts/debating_cron_builder.py \
   --task "Improve this module and test the result" \
   --output ./debating-runs/manual-test \
-  --runner mock
+  --runner mock \
+  --max-output-mb 20
 ```
 
 Use `--runner mock` for dry runs and directory validation. Use `--runner command --command '<your agent command template>'` when wiring a real local agent runner.
@@ -76,6 +77,8 @@ Top-level outputs:
 
 - Keep each implementation isolated under its own `run_x/implementation` directory.
 - Do not let parallel agents mutate the same source tree directly. Ask them to produce patches, plans, diffs, or artifacts under their run directory.
+- Keep all captured agent output bounded. Use `--max-output-mb` for command runners, default `20`, and preserve only the tail of stdout/stderr when an agent is too noisy.
+- If this workflow is wrapped in cron, call a cron space guard before launch: cap `.log`/`.out`/`.err` files, delete old logs after 3 days, refuse new runs below 30GB free space, and keep the run root under an explicit size budget.
 - Use `Promise.allSettled` / equivalent behavior when implementing in another language: one failed implementation agent should not kill the tournament if another run succeeded.
 - If all three implementation agents fail, stop and write a failure summary.
 - Select the best run by explicit `run_a`, `run_b`, or `run_c` votes in round two; tie-break deterministically by run id.

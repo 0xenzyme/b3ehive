@@ -54,7 +54,9 @@
    It may claim integration-ready DAG items directly, and it is the default owner for dependency-gated validation, integration, and merge/conflict cleanup after worker worktrees or branches land on `main`.
 19. Spawn `tmux` workers from the ordered DAG claim frontier.
    Worker count is `user_max_concurrency - live_worker_count`, capped by the count of unclaimed open DAG nodes in topological order. Do not subtract main-session integration claims from worker capacity.
-20. Remove cron when complete.
+20. Run a cron space guard before spawning workers.
+   Cap worker logs at 20MB, scheduler/keepalive logs at 5MB, delete logs older than 3 days, remove only stale non-live workspaces after 48 hours, refuse new workers below 30GB free space, and refuse new workers when the cron root remains above 30GB after cleanup.
+21. Remove cron when complete.
 
 ## Split-lane DAG worker pattern
 
@@ -118,6 +120,16 @@ Allowed only as a convenience mirror after the authoritative blueprint checklist
 - `.cron/<project>_guard.pending_checkpoint`
 - `.cron/<project>_guard.last_message.txt`
 - `.cron/<project>_guard.progress`
+- `.cron/scripts/cron_space_guard.sh`
+
+## Space and log budget
+
+Every scheduler tick must call a bounded cleanup helper before `tmux` or `codex exec` launch.
+
+- Use environment-overridable defaults: `MIN_FREE_GB=30`, `DANGER_FREE_GB=15`, `MAX_LOG_MB=20`, `MAX_KEEPALIVE_MB=5`, `LOG_RETENTION_DAYS=3`, `WORKSPACE_TTL_HOURS=48`, `MAX_CRON_ROOT_GB=30`.
+- Trim active logs by keeping the tail with `tail -c` and atomic `mv`; avoid unbounded `>> keepalive.log` growth.
+- Delete only stale workspaces whose paths are not referenced by live `codex`, `tmux`, shell, pid, or lock state.
+- If cleanup cannot bring the cron root under budget, write `blocked_disk_space` state and skip worker spawn.
 
 ## Common failure modes
 
@@ -150,6 +162,7 @@ Allowed only as a convenience mirror after the authoritative blueprint checklist
 - todo snapshots embedding `.cron/automation_repo*` absolute paths, causing noisy diffs and misleading progress references
 - implementation merged while blueprint/todo completion surfaces stayed stale, creating false "not done" reports
 - allowing workers to close blueprint/todo state directly instead of leaving dependency-gated closure to the main-session integration lane
+- unbounded slot logs, keepalive logs, or stale automation workspaces consuming the Data volume
 
 ## Dirty sync and stale claim recovery
 

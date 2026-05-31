@@ -31,11 +31,12 @@ Build a repository-local optimization pipeline that does not implement product c
    - AR blueprint tools
    - daily todo generator
    - optimization guard
+   - cron space/log guard
    - worker runner
    - install script
    - cleanup script
 7. Run the guard once in `VALIDATE_ONLY=1`.
-8. Install cron only after validate-only succeeds.
+8. Install cron only after validate-only succeeds and the disk/log budget guard passes.
 9. Start parallel `tmux` workers with disjoint section ownership.
 10. Reconcile section snapshots back into the authoritative AR blueprint and refresh today's todo after each worker batch.
 11. When all AR items are complete, remove cron entries, stop tmux sessions, and clean repo-local cron helpers if cleanup is requested.
@@ -65,12 +66,34 @@ Requirements:
 
 Requirements:
 - Maintain `.cron/*state`, logs, progress, heartbeat, last-message files.
+- Enforce disk/log safety on every tick before worker spawn:
+  - default `MIN_FREE_GB=30`; if the Data/root volume has less free space, run cleanup and refuse to start new workers
+  - default `DANGER_FREE_GB=15`; if below this, write state `blocked_disk_space` and exit immediately after lightweight cleanup
+  - default `MAX_LOG_MB=20` for worker logs and `MAX_KEEPALIVE_MB=5` for keepalive/scheduler logs; keep only the tail when files exceed the cap
+  - default `LOG_RETENTION_DAYS=3`; delete old `.log`, `.out`, and `.err` files under the cron root
+  - default `WORKSPACE_TTL_HOURS=48`; remove only stale, non-live `.cron/automation_repo*` or `.cron/**/workspaces/slot*` directories
+  - default `MAX_CRON_ROOT_GB=30`; if the cron root remains above this after cleanup, refuse new worker spawn
+  - never delete a workspace whose path is referenced by a live `codex exec`, `tmux`, shell, or lock/pid file
+  - write cleanup decisions to a bounded janitor log, not to an unbounded cron log
 - Support parallel `tmux` workers.
 - Assign workers by section ownership, not overlapping write scopes.
 - Reconcile worker section snapshots back into the main AR blueprint.
 - Refresh today's todo after each successful merge.
 - Treat empty or off-topic docs as failure, not progress.
 - Clean up cron when all AR items are checked.
+
+### Cron Space Guard
+
+Every generated optimization cron must include a repo-local janitor script, for example `.cron/scripts/cron_space_guard.sh`, and call it from the top of the optimization guard before any `tmux` or `codex exec` launch.
+
+Minimum behavior:
+- determine the cron root from the script path, not from the caller's current directory
+- cap active logs by preserving the last `MAX_LOG_MB` with `tail -c`, using a temp file plus atomic `mv`
+- rotate or truncate scheduler redirection targets such as `keepalive.log` before appending more output
+- clean old logs and stale workspaces before checking the cron-root budget
+- verify live worker paths with self-match-safe process checks before deleting any automation repo or workspace
+- return a distinct nonzero code for "budget exceeded" so the guard can exit without marking optimization progress
+- keep all defaults overrideable via environment variables
 
 ### Cleanup
 
