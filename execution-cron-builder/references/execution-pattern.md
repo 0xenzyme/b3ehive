@@ -51,18 +51,18 @@
    - treat "code done but blueprint/todo stale" as an execution failure, not a cosmetic issue
 17. If the same `[ ]` item remains unresolved for repeated ticks (default >=5), auto-split it into child checklist items, regenerate today's todo, and notify the human clearly.
 18. Let the main session participate as worker id `main-session` when a user goal is active.
-   It may claim ready DAG items directly, and it is the default owner for validation, integration, and merge/conflict cleanup after worker worktrees or branches land on `main`.
-19. Spawn `tmux` workers from the DAG ready frontier.
-   Worker count is `min(user_max_concurrency, ready_independent_item_count, disjoint_path_lane_count)` minus live workers and main-session claims.
+   It may claim integration-ready DAG items directly, and it is the default owner for dependency-gated validation, integration, and merge/conflict cleanup after worker worktrees or branches land on `main`.
+19. Spawn `tmux` workers from the ordered DAG claim frontier.
+   Worker count is `user_max_concurrency - live_worker_count`, capped by the count of unclaimed open DAG nodes in topological order. Do not subtract main-session integration claims from worker capacity.
 20. Remove cron when complete.
 
-## DAG-adaptive worker pattern
+## Split-lane DAG worker pattern
 
-Use this only when one worker is leaving material throughput on the table and the current todo DAG has multiple ready independent items with disjoint write lanes.
+Use this when one worker is leaving material throughput on the table and the user has requested concurrent implementation workers. Workers prepare implementation output in DAG/topological order; the main session integrates and closes nodes in dependency order.
 
-- Keep concurrency bounded by the user-provided max concurrency and by the DAG's independent ready capacity.
-- If the DAG exposes fewer independent ready items than the user max, spawn only what the DAG can safely carry.
-- If path scopes overlap, treat those nodes as dependent for scheduling even if their logical dependency lists are empty.
+- Keep worker concurrency bounded by the user-provided max concurrency and the number of unclaimed open DAG nodes.
+- Do not throttle worker spawn by independent ready capacity, unfinished dependencies, or overlapping path scopes. Those constraints are main-session integration gates, not worker-claim gates.
+- If path scopes overlap, mark the affected nodes as integration-conflicting and require the main session to merge or serialize closure; do not use overlap alone to leave worker slots idle.
 - Give each worker its own automation clone:
   - `.cron/automation_repo`
   - `.cron/automation_repo_slot2`
@@ -71,15 +71,16 @@ Use this only when one worker is leaving material throughput on the table and th
 - When spawning workers from a locked scheduler, close the scheduler lock fd on every `tmux` launch/respawn path (for example `9>&-`) so the lock dies with the scheduler instead of living inside the `tmux` server.
 - Keep the scheduler's state file authoritative; workers should write only to slot-specific state files.
 - Force explicit ownership from DAG nodes and path scopes.
-- The main session owns integration closure, validation, and merge/conflict repair unless a human assigns that role elsewhere.
+- The main session owns dependency-gated integration closure, validation, and merge/conflict repair unless a human assigns that role elsewhere.
 - Every newly launched `tmux` worker command must set `service_tier=flex`.
 - Require every worker batch to start with `fetch + pull --ff-only` or `fetch + rebase`.
-- Require every worker push to rebase and resolve only inside that worker's owned paths.
-- Keep blueprint/todo mutation centralized to one integration lane after honest validation on the combined tree.
+- Require every worker push to rebase and resolve only inside that worker's owned paths when possible; if a dependency or path conflict requires cross-node judgment, leave it for the main-session integration lane.
+- Keep blueprint/todo mutation centralized to one integration lane after honest validation on the combined tree and after DAG dependencies are satisfied.
 - Re-sync or mirror the authoritative local repo after successful worker pushes so future blueprint seeding does not revert checkmarks and today's todo stays current.
 - Track repeated unresolved checklist items; if one item survives >=5 ticks unresolved, split it into child checklist items and keep execution on that branch until children close.
 - Never let worker prompts name the scheduler checkout as `Repository root` when the worker process is actually launched inside an automation clone. This mistake causes workers to dirty the main checkout, creates false sync blocks, and defeats clone isolation.
-- When selecting work, compute the first still-open layer/cluster and then its DAG ready frontier before filtering claims. If all ready nodes in that first-open layer are claimed by live workers or the main session, do not spawn work from later layers.
+- When selecting worker work, compute the first still-open layer/cluster and then its ordered DAG claim frontier before filtering claims. Fill worker slots from unclaimed nodes in that frontier, even if earlier nodes are live, dependency-blocked for integration, or path-overlapping.
+- When selecting integration work, compute the dependency-ready frontier from landed worker outputs and close only nodes whose dependencies, validation gates, and merge/conflict constraints are satisfied.
 
 ## Todo DAG surface
 
@@ -88,12 +89,13 @@ Daily todos must include a machine-readable or consistently parseable DAG sectio
 - `node_id`: stable checklist item id
 - `title`: short item title
 - `depends_on`: zero or more item ids
-- `state`: `blocked`, `ready`, `claimed`, or `done_in_blueprint`
+- `worker_state`: `unclaimed`, `claimed`, `landed`, or `done_in_blueprint`
+- `integration_state`: `blocked`, `integration_ready`, `integrating`, or `closed`
 - `claim_owner`: `main-session`, `worker-N`, or empty
 - `owned_paths`: repo-relative path scopes
 - `blocks`: reverse dependencies when useful for humans
 
-The todo generator must reject cycles, duplicate node ids, and dependencies that point to missing checklist items. The guard uses the DAG to compute the ready frontier and maximum independent ready item count before spawning workers.
+The todo generator must reject cycles, duplicate node ids, and dependencies that point to missing checklist items. The guard uses the DAG to compute two frontiers: an ordered worker claim frontier for saturating worker sessions up to the user concurrency cap, and a dependency-ready integration frontier for the main session.
 
 ## Blueprint surface styles
 
@@ -137,7 +139,7 @@ Allowed only as a convenience mirror after the authoritative blueprint checklist
 - repeated real commits with zero checklist movement because the cron keeps hammering one non-closable cluster
 - repeated unresolved checklist items without automatic split into executable child items
 - todo DAG missing, stale, cyclic, or inconsistent with current unchecked blueprint items
-- spawning more workers than the DAG ready frontier can safely carry
+- throttling worker sessions to the dependency-ready frontier instead of filling the user-requested concurrency from the ordered DAG claim frontier
 - starting `tmux` workers without `service_tier=flex`
 - treating the main session as scheduler-only, leaving merge conflicts from worker landings unresolved
 - stale claims reserve open items for 24h even though the worker exited or failed
@@ -147,7 +149,7 @@ Allowed only as a convenience mirror after the authoritative blueprint checklist
 - worker clones updating the automation repo todo while the main repo todo stays stale, leaving humans with the wrong completion picture
 - todo snapshots embedding `.cron/automation_repo*` absolute paths, causing noisy diffs and misleading progress references
 - implementation merged while blueprint/todo completion surfaces stayed stale, creating false "not done" reports
-- allowing both workers to edit root manifests or blueprint files directly, creating avoidable merge conflicts
+- allowing workers to close blueprint/todo state directly instead of leaving dependency-gated closure to the main-session integration lane
 
 ## Dirty sync and stale claim recovery
 

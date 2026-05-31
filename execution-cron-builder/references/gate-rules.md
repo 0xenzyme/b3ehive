@@ -75,9 +75,10 @@ Do not silently commit these unless the repo's policy explicitly requires it.
 ## First-open selection rule
 
 - Determine the first still-open layer or cluster from the authoritative blueprint before filtering claims.
-- Spawn only unclaimed items from that first-open layer or cluster.
-- If every item in the first-open layer is claimed by live workers, spawn nothing from later layers in that tick.
+- Spawn workers only from unclaimed items in that first-open layer or cluster, ordered by the DAG/topological claim frontier.
+- Fill worker slots up to the user-requested concurrency cap when enough unclaimed nodes exist in the ordered claim frontier, even if earlier nodes are still live, dependency-blocked for integration, or path-overlapping.
 - Never select the first unclaimed layer, because stale or live claims in a lower layer would let upper-layer work run too early.
+- The main-session integration lane, not worker spawning, decides when a later layer or dependent node can close.
 
 ## Lock hygiene rule
 
@@ -90,7 +91,7 @@ Do not silently commit these unless the repo's policy explicitly requires it.
 
 - before the first cron tick, initialize the authoritative execution checklist in the blueprint with all `[ ]` marks
 - daily todos must derive from that authoritative blueprint checklist
-- daily todos must include the current DAG for unfinished checklist items, including dependencies, ready/blocked state, claim owner, owned paths, and ready frontier
+- daily todos must include the current DAG for unfinished checklist items, including dependencies, worker claim state, integration-ready/blocked state, claim owner, owned paths, ordered worker claim frontier, and main-session integration frontier
 - todo DAG generation must fail on cycles, duplicate node ids, or dependencies that point to missing checklist items
 - after each successful batch, backfill the authoritative blueprint checkmarks and refresh today's todo in the main repo
 - if the same `[ ]` item remains unresolved for repeated ticks (default >=5), auto-split it into child checklist items and report the split clearly to the human
@@ -119,17 +120,19 @@ When the blueprint is fully checked and validation passes:
 ## Main session rule
 
 - Treat the main session as worker id `main-session` when a user goal is active.
-- The main session may claim ready DAG items and do implementation work directly.
-- The main session is the default owner for validating, integrating, and clearing merge/rebase conflicts caused when worker worktrees or branches are merged back to `main`.
+- The main session may claim integration-ready DAG items and do implementation work directly when useful.
+- The main session is the default owner for validating, integrating, enforcing dependency-gated closure, and clearing merge/rebase conflicts caused when worker worktrees or branches are merged back to `main`.
 - Conflict cleanup must preserve both worker and upstream intent where possible, run the relevant validation gates, and checkpoint only a coherent merged tree.
 
-## DAG adaptive lane rule
+## Split-lane DAG concurrency rule
 
 When execution uses tmux workers:
 - newly launched `tmux` codex workers must set `service_tier=flex`
-- worker count must be computed from `min(user_max_concurrency, ready_independent_item_count, disjoint_path_lane_count)`, minus live workers and main-session claims
-- only one integration owner may close blueprint/todo checkmarks after combined validation
-- other workers should land code plus validation evidence only
+- worker count must be computed from `user_max_concurrency - live_worker_count`, capped by unclaimed open nodes in the ordered DAG claim frontier
+- do not reduce worker count because dependencies are unfinished, path scopes overlap, or the main session has integration claims
+- only one integration owner may close blueprint/todo checkmarks after combined validation and dependency checks
+- other workers should land code plus validation evidence only; their output is provisional until integrated
 - every lane must sync from origin before work and rebase before push
-- never allow two live lanes to own the same path family
-- never spawn work outside the current DAG ready frontier
+- overlapping path families are allowed as worker claims only when needed to fill requested concurrency, but they must be marked as integration conflicts and resolved by the main session before closure
+- never spawn worker work outside the current ordered DAG claim frontier
+- never close work outside the main-session dependency-ready integration frontier

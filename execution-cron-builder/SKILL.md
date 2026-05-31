@@ -10,7 +10,7 @@ description: Build or repair a blueprint-driven execution cron for a repository 
 Build a repository-local execution cron that wakes on a schedule, clones or syncs isolated automation repos, reads exactly one blueprint, keeps a dependency DAG for open checklist items, runs bounded `codex exec` batches, validates real implementation, checkpoints commits, and removes its own cron when the blueprint is truly complete.
 Default gate posture is strict: no mock completion, and no upper-layer completion while finer layers remain open.
 Default commit posture is code-first: never commit cron/private artifacts, never commit tests from automation batches, and keep docs commits less than or equal to code commits per batch.
-Default orchestration posture is DAG-aware: the main session may claim work under a user goal, while tmux workers scale only up to the smaller of user-requested max concurrency and the DAG's current independent-item capacity.
+Default orchestration posture is split-lane DAG aware: tmux workers claim implementation work in DAG/topological order up to the user-requested max concurrency, while the main session integrates, validates, and closes work strictly in DAG dependency order with conflict and completion gates enforced.
 
 ## Workflow
 
@@ -32,14 +32,14 @@ Default orchestration posture is DAG-aware: the main session may claim work unde
    For fragmented small files, merge same-directory file tasks into one batch with combined source size <=100KB; if a single file is >100KB, allow it as a single-file batch.
 9. Enforce strict layer gating: only execute the finest still-open layer; if lower layers are open, upper layers must stay unchecked.
    If a tick finds upper-layer `[x]` while lower layers are still open, auto-reset the violating upper-layer `[x]` items to `[ ]`, report the correction, and continue from the lower layer.
-10. Treat the main session as an execution participant, not only a scheduler.
-   The main session may claim checklist items under the active user goal, do implementation work directly, and is responsible for clearing merge/conflict blockers caused when worker worktrees or automation branches are merged back to `main`.
+10. Treat the main session as the integration/master lane, not only a scheduler.
+   The main session may claim checklist items under the active user goal, but its default responsibility is to merge worker output, enforce DAG dependencies, validate the combined tree, and clear merge/conflict blockers caused when worker worktrees or automation branches are merged back to `main`.
 11. Generate todos with the current dependency DAG for all unfinished checklist items.
-   The todo must list item ids, dependency ids, blocked/ready state, claimed worker/session, owned paths, and the ready frontier.
+   The todo must list item ids, dependency ids, worker-claim order state, integration-ready/blocked state, claimed worker/session, owned paths, and the main-session integration frontier.
    The DAG must be acyclic; cycle detection is a hard todo-generation failure.
-12. When launching new `tmux` codex workers, use adaptive DAG concurrency instead of a fixed worker count.
-   `worker_count = min(user_max_concurrency, current_ready_independent_item_count, available_disjoint_path_lanes)`, minus already-live workers and main-session claims.
-   Do not spawn a worker for an item that depends on an unfinished item or conflicts with another live item's owned paths.
+12. When launching new `tmux` codex workers, use user-saturated ordered DAG concurrency instead of ready-frontier lane limiting.
+   `worker_count = user_max_concurrency - live_worker_count`, capped by the count of unclaimed open DAG nodes available in topological order.
+   Workers must claim nodes from the earliest still-open layer/cluster in stable DAG/topological order, but worker spawn is not blocked by unfinished dependencies or overlapping path families. Dependent or path-overlapping worker results are provisional until the main session integrates them in DAG dependency order.
 13. Every newly launched `tmux` codex worker must use the requested/latest high-capability model and must set `service_tier=flex` in the `codex exec` configuration.
    For example, include `-c service_tier=\"flex\"` or the equivalent supported config form in the worker launch command.
 14. After every successful batch, sync completion back to the authoritative blueprint and refresh today's todo in the main repo.
@@ -99,10 +99,10 @@ Requirements:
 - Daily todos must include the current DAG of unfinished checklist items:
   - one node per unfinished item
   - dependency ids for every node
-  - blocked/ready state
+  - worker claim state and integration-ready/blocked state
   - claim owner, if any
   - owned path scope
-  - ready frontier and maximum independent ready item count
+  - worker claim frontier, main-session integration frontier, and user concurrency saturation status
   - cycle detection result
 - Successful batches must update the authoritative blueprint and then refresh today's todo.
 - If the repo requires multiple completion surfaces, successful batches must reconcile all of them in the same batch.
@@ -125,8 +125,8 @@ Requirements:
 - After each worker batch: `rebase/resolve within owned scope -> push`.
 - Local authoritative repo must also stay synced (`fetch + merge --ff-only`) so "remote updated but local stale" is impossible by design.
 - Newly launched `tmux` codex workers must set `service_tier=flex` in their `codex exec` configuration.
-- Worker count is adaptive from the todo DAG: never exceed the user's max concurrency, the ready independent item count, or the number of disjoint owned-path lanes.
-- The main session is allowed to claim work directly and should preferentially claim integration, validation, merge, and conflict-unblocking tasks when worker branches/worktrees land.
+- Worker count is saturated from the todo DAG order: never exceed the user's max concurrency, but do not reduce worker count merely because dependencies are unfinished or owned paths overlap.
+- The main session is allowed to claim work directly, but should preferentially own integration, validation, dependency-gated closure, merge, and conflict-unblocking tasks when worker branches/worktrees land.
 - Worker prompt root rule:
   - the prompt's `Repository root` must equal the automation clone path where the command is launched
   - include a line like `Work only inside this worker automation clone: <clone path>`
@@ -143,13 +143,13 @@ Requirements:
 - Enforce todo DAG generation for unfinished checklist items before selecting work:
   - parse item ids and dependency metadata from the authoritative checklist or a repo-local dependency map generated from it
   - reject cycles and duplicate ids
-  - compute ready nodes whose dependencies are complete
-  - compute independent ready capacity by excluding path-overlapping nodes and live claims
-  - write the DAG summary into today's todo before spawning or claiming work
+  - compute worker-claim order from the DAG topological order and first-open layer/cluster
+  - compute the main-session integration frontier by excluding nodes whose dependencies are incomplete, whose prerequisite worker output has not landed, or whose path conflicts are unresolved
+  - write both the worker claim frontier and the integration frontier into today's todo before spawning or claiming work
 - Select only the first still-open cluster and keep each run bounded.
 - Select the first still-open cluster before removing claimed items.
-  If every item in that first-open cluster is currently claimed by a live worker, spawn no upper-cluster work in that tick.
-  Do not choose the first unclaimed cluster; that skips lower-layer blockers and violates strict layer execution.
+  Worker spawn may claim additional unclaimed nodes from that cluster in DAG/topological order until user-requested concurrency is full, even when earlier nodes are already claimed by live workers.
+  Do not choose the first unclaimed cluster; that skips lower-layer ordering and violates strict layer execution. Only the main-session integration lane may decide that a later cluster can close, and only after lower DAG dependencies are complete.
 - For file-level fragmented work, enforce small-file merge batching:
   - prefer same-directory grouping
   - total source bytes per batch <=100KB
@@ -162,8 +162,8 @@ Requirements:
 - Detect repeated unresolved items: when the same checklist item remains unresolved for repeated ticks (default >=5), split it into child checklist items and sync blueprint/todo.
 - Parent-child closure rule: if all child checklist items are `[x]`, auto-close parent as `[x]`; if any child is `[ ]`, parent must remain `[ ]`.
 - Record milestone progress counts for successful commit/push batches when the repo uses notifications.
-- Treat the main session as worker id `main-session` for claims, progress, and conflict cleanup.
-  The main session may claim ready DAG nodes under the active goal and may claim repair nodes that unblock merge/rebase conflicts from worker worktrees.
+- Treat the main session as worker id `main-session` for integration claims, progress, and conflict cleanup.
+  The main session may claim integration-ready DAG nodes under the active goal and may claim repair nodes that unblock merge/rebase conflicts from worker worktrees.
   Conflict cleanup must be explicit: identify both sides, preserve user/worker changes where possible, run validation, and checkpoint the consolidation only after the merged tree is coherent.
 - On success, checkpoint and push changes, then sync completion back to the main blueprint and today's todo.
 - Treat incomplete completion-surface backfill as a hard failure (for example: stage blueprint updated but overall blueprint or today's todo not updated when required).
@@ -197,10 +197,10 @@ Requirements:
   - close the held lock fd before every `tmux` spawn/respawn path
   - keep workers on their own state files instead of sharing the scheduler state file
   - if the guard reports repeated "previous run still active" while no real scheduler is active, inspect inherited lock holders (for example `/proc/<pid>/fd/*`) and repair before continuing
-- Prefer DAG lane ownership over optimistic overlap:
-  - workers own ready nodes with disjoint path scopes
-  - the main session owns integration closure, validation, and merge/conflict repair by default
-  - no worker may start a node outside the current ready frontier
+- Prefer split-lane DAG ownership over worker-side dependency throttling:
+  - workers own implementation claims from the first-open layer/cluster in stable DAG/topological order, up to the user concurrency cap
+  - the main session owns integration closure, validation, dependency gating, and merge/conflict repair by default
+  - no worker may claim outside the current ordered DAG claim frontier, but workers may produce provisional output for nodes whose dependencies are not yet integrated
 - Only the integration owner should update the authoritative blueprint/todo after integrated validation; other workers should land code and evidence only.
 
 ### Cleanup Script
@@ -255,8 +255,8 @@ Do not commit batch outputs for:
 - For fragmented file checklist items, merge nearby same-directory files into one bounded batch (<=100KB combined) to avoid over-fragmented single-file ticks.
 - Stop after 6-8 coherent items at most.
 - If the blueprint is already fully checked, validate the current tree and exit cleanly without fabricating more work.
-- In multi-worker mode, keep workers on DAG-independent modules and let integration happen through git rebase/push plus authoritative repo re-sync, not by editing the same files concurrently.
-- Scale worker count from the DAG ready frontier, not a fixed target. If the DAG has only one ready independent item, run one worker or let the main session claim it. If the user max is lower than DAG capacity, obey the user max.
+- In multi-worker mode, keep workers claiming from the ordered DAG queue and let integration happen through git rebase/push plus authoritative repo re-sync, not by letting workers close blueprint/todo state directly.
+- Scale worker count to the user-requested concurrency cap from the DAG claim frontier. If dependencies or path conflicts exist, workers may still prepare provisional implementation output; the main session must merge, validate, and close those nodes only when the DAG dependency constraints are satisfied.
 
 ## Validation
 
