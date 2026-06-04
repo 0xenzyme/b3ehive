@@ -60,6 +60,7 @@
    Record item id, original blueprint id, dependency ids, session name, slot, workspace path, status, claim time, and owned path scopes. Todos must display `live:<session>`, `finished:<session>`, or `unclaimed`, plus the claim ledger path.
 22. Maintain a main-session integration queue for worker outputs.
    It must scan worker workspaces, report changed files and diff byte counts, detect path conflicts, and classify combined diffs <=256KiB as small-diff batch candidates. The main session may batch apply those small diffs when conflicts are absent or explicitly resolved, but it must validate and close checklist items in DAG dependency order.
+   Treat this as the default speed path for small landed work: apply a non-conflicting <=256KiB group, validate the combined tree, and close only the dependency-ordered prefix whose gates pass. Later items in the group can remain provisional after their code is applied if an earlier dependency still blocks closure.
 23. Run a cron space guard before spawning workers.
    Cap worker logs at 20MB, scheduler/keepalive logs at 5MB, delete logs older than 3 days, remove only stale non-live workspaces after 48 hours, refuse new workers below 30GB free space, and refuse new workers when the cron root remains above 30GB after cleanup.
 24. Remove cron when complete.
@@ -90,6 +91,10 @@ Use this when one worker is leaving material throughput on the table and the use
 - When selecting worker work, compute the first still-open layer/cluster and then its ordered DAG claim frontier before filtering claims. Fill worker slots from unclaimed nodes in that frontier, even if earlier nodes are live, dependency-blocked for integration, or path-overlapping.
 - When selecting integration work, compute the dependency-ready frontier from landed worker outputs and close only nodes whose dependencies, validation gates, and merge/conflict constraints are satisfied.
 - When integrating worker work, batch small outputs only when combined diff bytes are <=256KiB and path conflicts are absent or explicitly resolved. Apply diffs as a coherent group for speed, then close blueprint items in DAG dependency order after validation.
+- Do not serialize worker launch by dependency readiness. Ordered launch is about stable priority, not permission to leave lanes idle. If the user requests 90 workers and there are at least 90 unclaimed open DAG nodes in the active layer/cluster, the guard should attempt to reach 90 live claims even though the master integration frontier may be much smaller.
+- Track two separate bottleneck metrics: `worker_saturation = live_workers / user_max_concurrency` and `integration_backlog = landed_unclosed_outputs`. Low saturation is a scheduler/spawn/exit issue; a high backlog with good saturation is a master validation or merge bottleneck.
+- For small landed outputs, the master should prefer a batch with changed files, diff bytes, dependency ids, validators, and conflict status recorded before apply. A batch is eligible when combined diff <=256KiB and no unresolved path conflict exists.
+- Apply eligible small batches as one patch set, then validate once with the smallest sufficient command set. After validation, update blueprint/todo in dependency order, stopping at the first item whose gate fails while leaving later applied items provisional.
 
 ## Todo DAG surface
 
@@ -172,6 +177,7 @@ Every scheduler tick must call a bounded cleanup helper before `tmux` or `codex 
 - allowing workers to close blueprint/todo state directly instead of leaving dependency-gated closure to the main-session integration lane
 - unbounded slot logs, keepalive logs, or stale automation workspaces consuming the Data volume
 - master integration validating worker outputs one by one even when multiple non-conflicting diffs total <=256KiB and could be batch-applied before dependency-ordered closure
+- reporting only closed checklist count without live worker count, claim count, saturation percentage, and landed-unclosed backlog, which hides whether the bottleneck is launch, worker runtime, merge conflict repair, or validation
 
 ## Dirty sync and stale claim recovery
 

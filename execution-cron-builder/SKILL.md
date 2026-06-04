@@ -49,6 +49,7 @@ Default orchestration posture is split-lane DAG aware: tmux workers claim implem
    The queue must scan claimed worker workspaces, report changed files and diff byte counts, detect path conflicts, and classify outputs whose combined diff is <=256KiB as small-diff batch candidates.
 16. Allow batch integration of small worker diffs, with strict closure gates.
    The main session may batch apply multiple worker diffs when their combined diff is <=256KiB and path conflicts are absent or explicitly resolved. It must still validate and close checklist items in DAG dependency order, and must update the authoritative blueprint/todo after each accepted closure or coherent validated batch.
+   Batch application is an integration acceleration path, not a dependency bypass: apply the non-conflicting diffs together, run validation on the combined tree, then write `[x]` marks only for the longest dependency-ordered prefix whose gates pass.
 17. After every successful batch, sync completion back to the authoritative blueprint and refresh today's todo in the main repo.
 18. Enforce documentation reconciliation as a success gate:
    - if a batch closes checklist items, all required completion surfaces must be updated in the same batch (for example `Overall Blueprint + Stage Blueprint + today's todo`)
@@ -168,6 +169,9 @@ Requirements:
 - Select the first still-open cluster before removing claimed items.
   Worker spawn may claim additional unclaimed nodes from that cluster in DAG/topological order until user-requested concurrency is full, even when earlier nodes are already claimed by live workers.
   Do not choose the first unclaimed cluster; that skips lower-layer ordering and violates strict layer execution. Only the main-session integration lane may decide that a later cluster can close, and only after lower DAG dependencies are complete.
+- Keep worker claiming separate from integration readiness.
+  The scheduler must fill available worker slots from the ordered DAG claim frontier up to the user concurrency cap, even when those nodes depend on earlier unfinished work or touch overlapping path families.
+  Mark such outputs as provisional and let the main session decide merge order, conflict resolution, validation, and closure.
 - For file-level fragmented work, enforce small-file merge batching:
   - prefer same-directory grouping
   - total source bytes per batch <=100KB
@@ -219,6 +223,12 @@ Requirements:
   - workers own implementation claims from the first-open layer/cluster in stable DAG/topological order, up to the user concurrency cap
   - the main session owns integration closure, validation, dependency gating, and merge/conflict repair by default
   - no worker may claim outside the current ordered DAG claim frontier, but workers may produce provisional output for nodes whose dependencies are not yet integrated
+- Add an integration batching lane:
+  - maintain a queue of landed worker outputs with item id, dependencies, owned paths, changed files, diff bytes, and validation command hints
+  - group non-conflicting landed outputs when the combined diff is <=256KiB
+  - apply the group as one coherent integration batch, validate the combined tree once or with the smallest sufficient validator set, then close items in DAG order only after each item's gates pass
+  - if a later item in the applied group passes code validation but an earlier dependency is not closable, leave the later item provisional in the todo/queue rather than checking it in the blueprint
+  - report both worker saturation and integration throughput so operators can distinguish spawn underfill from master validation bottlenecks
 - Only the integration owner should update the authoritative blueprint/todo after integrated validation; other workers should land code and evidence only.
 
 ### Cron Space Guard
@@ -288,6 +298,7 @@ Do not commit batch outputs for:
 - If the blueprint is already fully checked, validate the current tree and exit cleanly without fabricating more work.
 - In multi-worker mode, keep workers claiming from the ordered DAG queue and let integration happen through git rebase/push plus authoritative repo re-sync, not by letting workers close blueprint/todo state directly.
 - Scale worker count to the user-requested concurrency cap from the DAG claim frontier. If dependencies or path conflicts exist, workers may still prepare provisional implementation output; the main session must merge, validate, and close those nodes only when the DAG dependency constraints are satisfied.
+- For landed worker outputs with no path conflicts and combined diff <=256KiB, prefer batch apply + combined validation over one-worker-at-a-time master validation. Blueprint closure remains dependency ordered and may be a prefix of the applied batch.
 
 ## Validation
 
