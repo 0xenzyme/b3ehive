@@ -29,8 +29,11 @@ Final research artifacts must be one-to-one with the original researched files a
 9. Generate the checklist once, then verify it contains real pending items and a manifest mapping every source file to exactly one work item or chunk set.
 10. Run the guard manually once before installing cron.
 11. Install cron only after the manual run proves the pipeline can claim work, write bounded logs, and pass the disk/log budget guard.
-12. If progress tables are broken, regenerate the checklist from repository state and reconcile `[x]` marks from existing research documents.
-13. On completion, remove cron entries and set the state file to `completed` only after the per-file 1:1 output check and folder-level index check pass.
+12. Use dual cursors for parallel research.
+   The researcher claim cursor keeps claiming unchecked, unclaimed source shards up to the requested worker concurrency.
+   Finished group/chunk/file reports move to a curator queue for split, merge, index reconciliation, folder synthesis, and checklist closure; they must not consume researcher capacity or prevent later unclaimed shards from starting.
+13. If progress tables are broken, regenerate the checklist from repository state and reconcile `[x]` marks from existing research documents.
+14. On completion, remove cron entries and set the state file to `completed` only after the per-file 1:1 output check and folder-level index check pass.
 
 ## Grouped Input, Per-File Output
 
@@ -119,6 +122,13 @@ Requirements:
   - write cleanup decisions to a bounded janitor log, not to an unbounded cron log
 - Support `tmux` worker fan-out for parallel research.
 - Claim work under a lock so workers do not duplicate batches.
+- Keep researcher claims and curator validation as separate queues:
+  - claim ledger states must distinguish `live`, `finished`, `curating`, `ok`, and `failed`
+  - only live researcher processes reduce available worker lanes
+  - finished worker outputs enter a curator queue and do not block the guard from scanning forward to unclaimed unchecked items
+  - daily todos must show both the researcher claim frontier and the curator frontier, with counts for live, finished-awaiting-curation, ok, failed, and unclaimed
+  - heavy curator scans such as per-file split validation, chunk merge checks, and folder-index synthesis should run after worker refill, incrementally, or behind an explicit refresh flag
+- When the requested concurrency is high, select claims under one lock but prepare worker prompts/workspaces with bounded parallelism so clone, sync, and startup overhead do not serialize the whole run.
 - Rotate `kimi` keys on auth/quota/rate-limit failures.
 - Distinguish between `completed`, `idle_waiting`, `exec_failed`, `exec_timeout`, and `running_exec`.
 - Reconcile checklist marks from existing non-empty research docs.

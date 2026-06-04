@@ -61,9 +61,12 @@ For code migrations, prefer a runnable target package or module tree under a tar
    If in-place migration is required, use a separate staging clone and merge only after validation.
 8. Validate every target artifact before copying or syncing it back into the authoritative repo.
 9. Defer repeat validation failures within each shard so fresh items keep flowing.
-10. Run the guard manually before installing cron.
-11. Install cron only after checklist generation, todo generation, status reporting, one manual worker pass, and one disk/log budget guard pass all succeed.
-12. Remove only this migration cron when all checklist items are complete and cleanup gates pass.
+10. Use dual cursors for migration throughput.
+   The transformer claim cursor fills worker slots from unchecked, unclaimed source-to-target shards.
+   Finished transformed outputs move to an integrator queue for contract validation, conflict resolution, syncing, and checklist closure; they must not consume transformer capacity or prevent later unclaimed shards from starting.
+11. Run the guard manually before installing cron.
+12. Install cron only after checklist generation, todo generation, status reporting, one manual worker pass, and one disk/log budget guard pass all succeed.
+13. Remove only this migration cron when all checklist items are complete and cleanup gates pass.
 
 ## Migration Spec
 
@@ -198,6 +201,16 @@ Do not mark a migration item complete for:
 - Default model: `gpt-5.4`.
 - Default reasoning effort: `xhigh`.
 - Scheduler should only spawn one worker per slot when its pid is not alive.
+- Maintain separate transformer and integrator queues:
+  - the transformer claim ledger records source artifact, target artifact, validator, worker slot, workspace, state, claim time, and path scope
+  - only `live` transformer workers reduce available worker lanes
+  - `finished`, `failed_validation`, and `needs_conflict_resolution` outputs belong to the integrator queue and must not block new unchecked, unclaimed shards from being claimed
+  - the integrator queue records target paths, changed files, diff bytes or artifact bytes, validator hints, conflicts, and batch eligibility
+  - daily todos/status output must show both cursors: transformer claim frontier and integrator validation frontier
+  - heavy integrator scans should run after worker refill, incrementally, or behind an explicit refresh flag
+- For high-concurrency migrations, select claims deterministically under one lock, then prepare isolated workspaces and launch workers with bounded parallelism.
+- Batch integrate small, non-conflicting outputs when practical.
+  For file migrations, group non-conflicting transformed outputs whose combined diff/artifact size is <=256KiB, run the smallest sufficient contract validators on the combined target set, then mark checklist items complete only for validated outputs in source/checklist order.
 - Every scheduler tick must run a repo-local cron space guard before spawning workers:
   - default `MIN_FREE_GB=30`; if the Data/root volume has less free space, run cleanup and refuse to start new workers
   - default `DANGER_FREE_GB=15`; if below this, write state `blocked_disk_space` and exit after lightweight cleanup

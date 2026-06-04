@@ -47,54 +47,58 @@ Default orchestration posture is split-lane DAG aware: tmux workers claim implem
    Honor explicit environment/config values such as `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, and `CODEX_SERVICE_TIER`; do not silently replace a requested service tier. If no service tier is specified, the cron may choose its repo default and must print that value in the guard output.
 15. Add a main-session integration queue for landed worker outputs.
    The queue must scan claimed worker workspaces, report changed files and diff byte counts, detect path conflicts, and classify outputs whose combined diff is <=256KiB as small-diff batch candidates.
-16. Allow batch integration of small worker diffs, with strict closure gates.
+16. Keep worker claim and master integration as separate cursors.
+   The worker cursor is saturated from open DAG nodes whose claim state is `unclaimed` or `live`; `finished` claims belong to the master integration queue and must not consume worker capacity or stop later unclaimed nodes from being claimed.
+   Todo generation must show both cursors: the worker claim frontier for concurrency filling, and the master integration frontier/queue for DAG-ordered validation and closure.
+   Heavy integration queue scans must not block worker refill; run them after refill, incrementally, or behind an explicit refresh flag.
+17. Allow batch integration of small worker diffs, with strict closure gates.
    The main session may batch apply multiple worker diffs when their combined diff is <=256KiB and path conflicts are absent or explicitly resolved. It must still validate and close checklist items in DAG dependency order, and must update the authoritative blueprint/todo after each accepted closure or coherent validated batch.
    Batch application is an integration acceleration path, not a dependency bypass: apply the non-conflicting diffs together, run validation on the combined tree, then write `[x]` marks only for the longest dependency-ordered prefix whose gates pass.
-17. After every successful batch, sync completion back to the authoritative blueprint and refresh today's todo in the main repo.
-18. Enforce documentation reconciliation as a success gate:
+18. After every successful batch, sync completion back to the authoritative blueprint and refresh today's todo in the main repo.
+19. Enforce documentation reconciliation as a success gate:
    - if a batch closes checklist items, all required completion surfaces must be updated in the same batch (for example `Overall Blueprint + Stage Blueprint + today's todo`)
    - todo references must use stable repository paths, never automation clone absolute paths
    - "code done but completion docs stale" is a failed tick and must trigger a repair batch
-19. If the same `[ ]` item remains unresolved for repeated ticks (default >=5), auto-split it into child checklist items in the blueprint, regenerate today's todo, and notify the human with the split details.
-20. Clean up the cron when the blueprint is complete and validation passes.
+20. If the same `[ ]` item remains unresolved for repeated ticks (default >=5), auto-split it into child checklist items in the blueprint, regenerate today's todo, and notify the human with the split details.
+21. Clean up the cron when the blueprint is complete and validation passes.
    Cleanup must use hard conditions:
    - authoritative blueprint has zero unchecked items
    - latest todo snapshot shows `Unfinished = 0`
    - no running `codex` process in automation repos
    - no pending checkpoint artifact remains
    - cleanup script succeeds and cron entry is actually removed
-21. Enforce commit-surface policy at checkpoint time:
+22. Enforce commit-surface policy at checkpoint time:
    - never stage/commit `.cron/`, `.ops/`, logs, state, generated todo snapshots, model binaries
    - never stage/commit `spec/` or `tests/` changes from execution batches
    - reject batch commit when staged docs files outnumber staged code files
    - reject docs-only batch commits
    - classify executable validation assets that live under docs-style folders as `code/evidence`, not prose docs
    - at minimum, treat paths like `Docs/Stage3IOSPathValidation/**` and `Docs/scripts/*.sh` as `code/evidence` during commit hygiene counting
-22. Enforce sync-first push policy:
+23. Enforce sync-first push policy:
    - before coding (at tick start) and before checkpoint commit, local authoritative repo must `fetch --prune` + `ff-only` sync
    - at tick start, explicitly verify development machine branch HEAD equals remote tracking HEAD; if not equal, block the tick before any implementation
    - after every successful push, local authoritative repo must be synced again and verified equal to remote HEAD
    - if local sync fails (dirty tracked changes, detached HEAD, non-ff, or network failure), block the tick and do not treat batch as success
-23. Add a `repo force sync` best-practice path for stuck ticks:
+24. Add a `repo force sync` best-practice path for stuck ticks:
    - trigger condition: repeated sync blocks caused by local tracked changes
    - sequence: `stash -u` -> `fetch --prune` + `pull/rebase or ff-only merge` -> `stash pop`
    - if `stash pop` conflicts, stop and resolve conflicts explicitly, then run one consolidation commit+push
    - always log the force-sync attempt and result so operators can audit it later
-24. Add lock hygiene when the guard uses `flock` and also spawns `tmux` workers:
+25. Add lock hygiene when the guard uses `flock` and also spawns `tmux` workers:
    - never let the scheduler's locked file descriptor leak into `tmux new-session`, `tmux new-window`, or `tmux respawn-pane`
    - explicitly close the lock fd on those launches (for example `9>&-`) before `tmux` starts its server/client process tree
    - keep scheduler/global state separate from worker/slot state so a no-focus worker cannot overwrite the scheduler's authoritative status
    - if a historical lock was already leaked into a long-lived `tmux` server, rotate the lock path version or restart the affected `tmux` server/session before resuming cron
-25. Ensure worker prompts use the actual automation clone as `Repository root`.
+26. Ensure worker prompts use the actual automation clone as `Repository root`.
    If a worker process is launched with `cd .cron/automation_repo_slotN`, the prompt must name that clone path as the repository root and explicitly forbid direct edits to the scheduler's authoritative checkout.
    Never put the main checkout path in a worker prompt unless the worker is intentionally running in the main checkout.
-26. Treat claim and dirty-sync recovery as part of the guard, not manual cleanup:
+27. Treat claim and dirty-sync recovery as part of the guard, not manual cleanup:
    - release claims for items that are already closed in the authoritative blueprint
    - release claims for still-open items when the assigned worker process is no longer alive
    - detect active workers with self-match-safe process patterns such as `[c]odex exec...`
    - if the main checkout has tracked dirty files and no active workers, stash with an audit label before syncing
    - if tracked dirty files exist while workers are active, block protectively instead of stashing their live work
-27. Add a disk/log budget guard before installing or repairing cron.
+28. Add a disk/log budget guard before installing or repairing cron.
    The guard must run at the start of every scheduler tick, before spawning workers, and must block new workers when budgets are exceeded.
 
 ## Required Components
@@ -172,6 +176,14 @@ Requirements:
 - Keep worker claiming separate from integration readiness.
   The scheduler must fill available worker slots from the ordered DAG claim frontier up to the user concurrency cap, even when those nodes depend on earlier unfinished work or touch overlapping path families.
   Mark such outputs as provisional and let the main session decide merge order, conflict resolution, validation, and closure.
+- Implement worker and master ledgers as independent queues.
+  The worker claim ledger records reservations and liveness; only `live` reservations reduce available worker lanes.
+  `finished` reservations are inputs to the integration queue and must not prevent the scheduler from scanning forward to later unclaimed open DAG nodes.
+  The integration queue records landed outputs, diff bytes, changed files, path conflicts, validation hints, and small-diff batch eligibility.
+  Refreshing that integration metadata is master work and must not be placed on the critical path before worker refill unless the operator explicitly requests it.
+- When high concurrency is requested, parallelize worker preparation safely.
+  Select claim items in stable DAG/topological order under one lock, append reservations atomically, then prepare isolated workspaces and start `tmux` sessions with bounded parallelism.
+  Use a configurable preparation fan-out so clone/rsync/startup overhead does not make a 90-lane request behave like a serial launcher.
 - For file-level fragmented work, enforce small-file merge batching:
   - prefer same-directory grouping
   - total source bytes per batch <=100KB
