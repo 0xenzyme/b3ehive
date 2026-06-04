@@ -65,6 +65,8 @@ Do not silently commit these unless the repo's policy explicitly requires it.
 ## Claim ledger rule
 
 - Claims are live reservations, not completion evidence.
+- Each claim record must include item id, original blueprint id, dependency ids, session name, slot, workspace path, status, claim time, and owned path scopes.
+- Todo generation must expose claim state as `live:<session>`, `finished:<session>`, or `unclaimed`, and must include the claim ledger path.
 - Release claims for items already marked `[x]` in the authoritative blueprint.
 - Release claims for still-open items when the assigned worker process is no longer alive.
 - Keep claims for still-open items only when the assigned worker process is live.
@@ -127,7 +129,7 @@ When the blueprint is fully checked and validation passes:
 ## Split-lane DAG concurrency rule
 
 When execution uses tmux workers:
-- newly launched `tmux` codex workers must set `service_tier=flex`
+- newly launched `tmux` codex workers must honor explicit `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, and `CODEX_SERVICE_TIER`; if service tier is unset, the guard may use a repo default but must print it
 - worker count must be computed from `user_max_concurrency - live_worker_count`, capped by unclaimed open nodes in the ordered DAG claim frontier
 - do not reduce worker count because dependencies are unfinished, path scopes overlap, or the main session has integration claims
 - only one integration owner may close blueprint/todo checkmarks after combined validation and dependency checks
@@ -136,3 +138,18 @@ When execution uses tmux workers:
 - overlapping path families are allowed as worker claims only when needed to fill requested concurrency, but they must be marked as integration conflicts and resolved by the main session before closure
 - never spawn worker work outside the current ordered DAG claim frontier
 - never close work outside the main-session dependency-ready integration frontier
+
+## Validate-only rule
+
+- `VALIDATE_ONLY=1` is a dry gate only.
+- A validate-only run may verify configuration, sync state, DAG consistency, claim ledger shape, disk/log budgets, and todo generation.
+- A validate-only run must exit before creating claims, launching `tmux`, or starting `codex exec`.
+- If the operator's goal is to fill worker lanes, the guard must run without `VALIDATE_ONLY=1`.
+
+## Small-diff integration batch rule
+
+- The main session must maintain an integration queue that scans worker workspaces for changed files, diff byte counts, claim ids, and path conflicts.
+- Worker outputs whose combined diff is <=256KiB are small-diff batch candidates.
+- The main session may batch apply multiple small worker diffs when path conflicts are absent or explicitly resolved.
+- Batch application is only an integration speedup; checklist closure still follows DAG dependency order and every accepted closure must pass its validation gate.
+- After a coherent validated batch, update the authoritative blueprint and today's todo so progress counts and percentages reflect the batch immediately.

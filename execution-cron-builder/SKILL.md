@@ -27,6 +27,7 @@ Default orchestration posture is split-lane DAG aware: tmux workers claim implem
    - cron installer
    - cron cleanup script
 6. Run `VALIDATE_ONLY=1` once before enabling cron.
+   `VALIDATE_ONLY=1` is a dry gate only: it must validate configuration, DAG shape, sync state, and budgets, then exit without spawning or claiming workers. Never use validate-only for an execution tick whose purpose is to fill worker lanes.
 7. Install cron only after the automation repo, checklist bootstrap, blueprint seeding, and todo generation all work.
 8. Keep the batch size small and cluster-bounded.
    For fragmented small files, merge same-directory file tasks into one batch with combined source size <=100KB; if a single file is >100KB, allow it as a single-file batch.
@@ -40,53 +41,59 @@ Default orchestration posture is split-lane DAG aware: tmux workers claim implem
 12. When launching new `tmux` codex workers, use user-saturated ordered DAG concurrency instead of ready-frontier lane limiting.
    `worker_count = user_max_concurrency - live_worker_count`, capped by the count of unclaimed open DAG nodes available in topological order.
    Workers must claim nodes from the earliest still-open layer/cluster in stable DAG/topological order, but worker spawn is not blocked by unfinished dependencies or overlapping path families. Dependent or path-overlapping worker results are provisional until the main session integrates them in DAG dependency order.
-13. Every newly launched `tmux` codex worker must use the requested/latest high-capability model and must set `service_tier=flex` in the `codex exec` configuration.
-   For example, include `-c service_tier=\"flex\"` or the equivalent supported config form in the worker launch command.
-14. After every successful batch, sync completion back to the authoritative blueprint and refresh today's todo in the main repo.
-15. Enforce documentation reconciliation as a success gate:
+13. Maintain a claim ledger for tmux workers.
+   The ledger must record item id, original blueprint id, dependency ids, session name, slot, workspace path, status, claim time, and owned path scopes. Todo generation must display each open item's claim state as `live:<session>`, `finished:<session>`, or `unclaimed`, and must include the claim ledger path.
+14. Every newly launched `tmux` codex worker must use the user-requested/latest high-capability model, reasoning effort, and service tier.
+   Honor explicit environment/config values such as `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, and `CODEX_SERVICE_TIER`; do not silently replace a requested service tier. If no service tier is specified, the cron may choose its repo default and must print that value in the guard output.
+15. Add a main-session integration queue for landed worker outputs.
+   The queue must scan claimed worker workspaces, report changed files and diff byte counts, detect path conflicts, and classify outputs whose combined diff is <=256KiB as small-diff batch candidates.
+16. Allow batch integration of small worker diffs, with strict closure gates.
+   The main session may batch apply multiple worker diffs when their combined diff is <=256KiB and path conflicts are absent or explicitly resolved. It must still validate and close checklist items in DAG dependency order, and must update the authoritative blueprint/todo after each accepted closure or coherent validated batch.
+17. After every successful batch, sync completion back to the authoritative blueprint and refresh today's todo in the main repo.
+18. Enforce documentation reconciliation as a success gate:
    - if a batch closes checklist items, all required completion surfaces must be updated in the same batch (for example `Overall Blueprint + Stage Blueprint + today's todo`)
    - todo references must use stable repository paths, never automation clone absolute paths
    - "code done but completion docs stale" is a failed tick and must trigger a repair batch
-16. If the same `[ ]` item remains unresolved for repeated ticks (default >=5), auto-split it into child checklist items in the blueprint, regenerate today's todo, and notify the human with the split details.
-17. Clean up the cron when the blueprint is complete and validation passes.
+19. If the same `[ ]` item remains unresolved for repeated ticks (default >=5), auto-split it into child checklist items in the blueprint, regenerate today's todo, and notify the human with the split details.
+20. Clean up the cron when the blueprint is complete and validation passes.
    Cleanup must use hard conditions:
    - authoritative blueprint has zero unchecked items
    - latest todo snapshot shows `Unfinished = 0`
    - no running `codex` process in automation repos
    - no pending checkpoint artifact remains
    - cleanup script succeeds and cron entry is actually removed
-18. Enforce commit-surface policy at checkpoint time:
+21. Enforce commit-surface policy at checkpoint time:
    - never stage/commit `.cron/`, `.ops/`, logs, state, generated todo snapshots, model binaries
    - never stage/commit `spec/` or `tests/` changes from execution batches
    - reject batch commit when staged docs files outnumber staged code files
    - reject docs-only batch commits
    - classify executable validation assets that live under docs-style folders as `code/evidence`, not prose docs
    - at minimum, treat paths like `Docs/Stage3IOSPathValidation/**` and `Docs/scripts/*.sh` as `code/evidence` during commit hygiene counting
-19. Enforce sync-first push policy:
+22. Enforce sync-first push policy:
    - before coding (at tick start) and before checkpoint commit, local authoritative repo must `fetch --prune` + `ff-only` sync
    - at tick start, explicitly verify development machine branch HEAD equals remote tracking HEAD; if not equal, block the tick before any implementation
    - after every successful push, local authoritative repo must be synced again and verified equal to remote HEAD
    - if local sync fails (dirty tracked changes, detached HEAD, non-ff, or network failure), block the tick and do not treat batch as success
-20. Add a `repo force sync` best-practice path for stuck ticks:
+23. Add a `repo force sync` best-practice path for stuck ticks:
    - trigger condition: repeated sync blocks caused by local tracked changes
    - sequence: `stash -u` -> `fetch --prune` + `pull/rebase or ff-only merge` -> `stash pop`
    - if `stash pop` conflicts, stop and resolve conflicts explicitly, then run one consolidation commit+push
    - always log the force-sync attempt and result so operators can audit it later
-21. Add lock hygiene when the guard uses `flock` and also spawns `tmux` workers:
+24. Add lock hygiene when the guard uses `flock` and also spawns `tmux` workers:
    - never let the scheduler's locked file descriptor leak into `tmux new-session`, `tmux new-window`, or `tmux respawn-pane`
    - explicitly close the lock fd on those launches (for example `9>&-`) before `tmux` starts its server/client process tree
    - keep scheduler/global state separate from worker/slot state so a no-focus worker cannot overwrite the scheduler's authoritative status
    - if a historical lock was already leaked into a long-lived `tmux` server, rotate the lock path version or restart the affected `tmux` server/session before resuming cron
-22. Ensure worker prompts use the actual automation clone as `Repository root`.
+25. Ensure worker prompts use the actual automation clone as `Repository root`.
    If a worker process is launched with `cd .cron/automation_repo_slotN`, the prompt must name that clone path as the repository root and explicitly forbid direct edits to the scheduler's authoritative checkout.
    Never put the main checkout path in a worker prompt unless the worker is intentionally running in the main checkout.
-23. Treat claim and dirty-sync recovery as part of the guard, not manual cleanup:
+26. Treat claim and dirty-sync recovery as part of the guard, not manual cleanup:
    - release claims for items that are already closed in the authoritative blueprint
    - release claims for still-open items when the assigned worker process is no longer alive
    - detect active workers with self-match-safe process patterns such as `[c]odex exec...`
    - if the main checkout has tracked dirty files and no active workers, stash with an audit label before syncing
    - if tracked dirty files exist while workers are active, block protectively instead of stashing their live work
-24. Add a disk/log budget guard before installing or repairing cron.
+27. Add a disk/log budget guard before installing or repairing cron.
    The guard must run at the start of every scheduler tick, before spawning workers, and must block new workers when budgets are exceeded.
 
 ## Required Components
@@ -126,7 +133,7 @@ Requirements:
 - Before each worker batch: `fetch + pull --ff-only` or `fetch + rebase` against the authoritative branch.
 - After each worker batch: `rebase/resolve within owned scope -> push`.
 - Local authoritative repo must also stay synced (`fetch + merge --ff-only`) so "remote updated but local stale" is impossible by design.
-- Newly launched `tmux` codex workers must set `service_tier=flex` in their `codex exec` configuration.
+- Newly launched `tmux` codex workers must honor the requested service tier in their `codex exec` configuration; if unset, use and print the repo default.
 - Worker count is saturated from the todo DAG order: never exceed the user's max concurrency, but do not reduce worker count merely because dependencies are unfinished or owned paths overlap.
 - The main session is allowed to claim work directly, but should preferentially own integration, validation, dependency-gated closure, merge, and conflict-unblocking tasks when worker branches/worktrees land.
 - Worker prompt root rule:
