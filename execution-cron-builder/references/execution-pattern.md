@@ -11,59 +11,68 @@
 1. Choose one blueprint file.
 2. If the blueprint is prose-first, generate an authoritative execution checklist section into that same blueprint.
 3. Seed the execution checklist with all `[ ]` marks before the first cron tick.
-4. Generate a daily todo from that authoritative checklist section, including the current dependency DAG for unfinished items.
-5. Use an isolated automation repo when the main repo may be dirty.
-6. Run `codex exec --model <requested-or-latest-high-model> -c model_reasoning_effort="xhigh"` in bounded clusters.
+4. Treat checklist marks as the two execution cursors:
+   - `[ ]` means not done and claimable by workers
+   - `[_]` means worker self-tested and waiting for master integration
+   - `[x]` means master accepted after integration and validation
+   Workers can only move `[ ] -> [_]`; the master lane is the only actor that
+   can move `[_] -> [x]`.
+5. Generate a daily todo from that authoritative checklist section, including the current dependency DAG for unfinished items.
+6. Use an isolated automation repo when the main repo may be dirty.
+7. Run `codex exec --model <requested-or-latest-high-model> -c model_reasoning_effort="xhigh"` in bounded clusters.
    New `tmux` workers must honor explicit `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, and `CODEX_SERVICE_TIER` values. If no service tier is specified, print and use the repo default instead of silently changing the operator's requested tier.
-7. Enforce strict layer gate: only work on the finest still-open layer; do not close upper layers while lower layers are open.
-8. Validate honestly.
-9. Commit/push only real work.
-10. Apply commit hygiene before every checkpoint:
+8. Enforce strict layer gate: only work on the finest still-open layer; do not close upper layers while lower layers are open.
+9. Validate honestly.
+10. Commit/push only real work.
+11. Apply commit hygiene before every checkpoint:
    - never commit `.cron/`, logs, generated todos, or tests/spec
    - never commit model binaries; commit reproducible download scripts instead
    - docs cannot outnumber code changes in a batch, and docs-only batch commits are invalid
    - runnable validation packages/scripts stored under `Docs/` count as `code/evidence`, not prose docs
    - patterns like `Docs/Stage3IOSPathValidation/**` and `Docs/scripts/*.sh` count as `code/evidence` when they hold runnable validation logic
-11. Apply sync-first push gate:
+12. Apply sync-first push gate:
    - tick start: development machine must sync first (`fetch --prune + ff-only`) and local HEAD must equal remote tracking HEAD before coding
    - pre-commit: local authoritative repo must be syncable with `fetch + ff-only`
    - post-push: local authoritative repo must be synced and verified equal to remote HEAD
    - any sync failure blocks success and must be reported
-12. Apply lock hygiene when the guard holds `flock` locks and also uses `tmux`:
+13. Apply lock hygiene when the guard holds `flock` locks and also uses `tmux`:
    - close the held lock fd before `tmux new-session`, `tmux new-window`, and `tmux respawn-pane` so the `tmux` server cannot inherit and pin the lock
    - keep scheduler/global state separate from worker/slot state files
    - if a stale `tmux` server already inherited the lock, rotate the lock-file version or kill/restart that server before the next tick
-13. Make worker prompts clone-accurate:
+14. Make worker prompts clone-accurate:
    - if the worker command runs in `.cron/automation_repo_slotN`, the prompt must say `Repository root: <that automation clone>`
    - explicitly instruct the worker to work only inside that clone
    - explicitly forbid direct edits to the scheduler's authoritative checkout
    - committed artifacts must still use stable repo-relative paths, not automation clone absolute paths
-14. Treat claims as live reservations:
+15. Treat claims as live reservations:
    - prune claims for items that are already `[x]`
    - prune claims for `[ ]` items when the assigned worker process is gone
+   - move finished worker claims to `[_]` evidence and the master integration queue
+   - never let `[_]` finished claims consume live worker capacity
    - keep claims only when the item is open and the assigned worker is still live
    - log every released claim to an audit ledger
    - use self-match-safe process checks such as `[c]odex exec...`
-15. Treat `VALIDATE_ONLY=1` as a dry gate only.
+16. Treat `VALIDATE_ONLY=1` as a dry gate only.
    It may validate sync, DAG, budget, and configuration state, but it must exit before worker claims or `tmux` spawn. Do not use validate-only when the purpose is to saturate worker lanes.
-16. Sync the main blueprint and today's todo after each successful batch.
-17. Enforce documentation reconciliation after every completion backfill:
+17. Sync the main blueprint and today's todo after each successful batch.
+18. Enforce documentation reconciliation after every completion backfill:
    - if a batch closes checklist items, it must update every required status surface in the same batch (for example: authoritative blueprint + stage blueprint mirror + today's todo)
    - todo entries must point to stable repository paths (never automation clone absolute paths) so diffs stay reviewable and do not leak local runtime paths
    - treat "code done but blueprint/todo stale" as an execution failure, not a cosmetic issue
-18. If the same `[ ]` item remains unresolved for repeated ticks (default >=5), auto-split it into child checklist items, regenerate today's todo, and notify the human clearly.
-19. Let the main session participate as worker id `main-session` when a user goal is active.
+19. If the same `[ ]` item remains unresolved for repeated ticks (default >=5), auto-split it into child checklist items, regenerate today's todo, and notify the human clearly.
+20. Let the main session participate as worker id `main-session` when a user goal is active.
    It may claim integration-ready DAG items directly, and it is the default owner for dependency-gated validation, integration, and merge/conflict cleanup after worker worktrees or branches land on `main`.
-20. Spawn `tmux` workers from the ordered DAG claim frontier.
+21. Spawn `tmux` workers from the ordered DAG claim frontier.
    Worker count is `user_max_concurrency - live_worker_count`, capped by the count of unclaimed open DAG nodes in topological order. Do not subtract main-session integration claims from worker capacity, and do not reduce worker count because dependencies are unfinished or path scopes overlap.
-21. Maintain a claim ledger.
+22. Maintain a claim ledger.
    Record item id, original blueprint id, dependency ids, session name, slot, workspace path, status, claim time, and owned path scopes. Todos must display `live:<session>`, `finished:<session>`, or `unclaimed`, plus the claim ledger path.
-22. Maintain a main-session integration queue for worker outputs.
+23. Maintain a main-session integration queue for worker outputs.
    It must scan worker workspaces, report changed files and diff byte counts, detect path conflicts, and classify combined diffs <=256KiB as small-diff batch candidates. The main session may batch apply those small diffs when conflicts are absent or explicitly resolved, but it must validate and close checklist items in DAG dependency order.
    Treat this as the default speed path for small landed work: apply a non-conflicting <=256KiB group, validate the combined tree, and close only the dependency-ordered prefix whose gates pass. Later items in the group can remain provisional after their code is applied if an earlier dependency still blocks closure.
-23. Run a cron space guard before spawning workers.
+24. Run a cron space guard before spawning workers.
    Cap worker logs at 20MB, scheduler/keepalive logs at 5MB, delete logs older than 3 days, remove only stale non-live workspaces after 48 hours, refuse new workers below 30GB free space, and refuse new workers when the cron root remains above 30GB after cleanup.
-24. Remove cron when complete.
+25. Remove cron when complete only when the authoritative blueprint and latest
+   todo have zero `[ ]` and zero `[_]` items.
 
 ## Split-lane DAG worker pattern
 
@@ -103,13 +112,19 @@ Daily todos must include a machine-readable or consistently parseable DAG sectio
 - `node_id`: stable checklist item id
 - `title`: short item title
 - `depends_on`: zero or more item ids
+- `checkbox_state`: `[ ]`, `[_]`, or `[x]`
 - `worker_state`: `unclaimed`, `claimed`, `landed`, or `done_in_blueprint`
 - `integration_state`: `blocked`, `integration_ready`, `integrating`, or `closed`
 - `claim_owner`: `main-session`, `worker-N`, or empty
 - `owned_paths`: repo-relative path scopes
 - `blocks`: reverse dependencies when useful for humans
 
-The todo generator must reject cycles, duplicate node ids, and dependencies that point to missing checklist items. The guard uses the DAG to compute two frontiers: an ordered worker claim frontier for saturating worker sessions up to the user concurrency cap, and a dependency-ready integration frontier for the main session.
+The todo generator must reject cycles, duplicate node ids, dependencies that
+point to missing checklist items, and checkbox states other than `[ ]`, `[_]`,
+or `[x]`. The guard uses the DAG to compute two frontiers: an ordered worker
+claim frontier from `[ ]` nodes for saturating worker sessions up to the user
+concurrency cap, and a dependency-ready integration frontier from `[_]` nodes
+for the main session.
 
 ## Blueprint surface styles
 
@@ -117,8 +132,11 @@ The todo generator must reject cycles, duplicate node ids, and dependencies that
 Preferred for new execution crons.
 - keep the checklist in the same blueprint file that defines the work
 - initialize it with all `[ ]` marks before first execution
+- preserve `[ ]`, `[_]`, and `[x]` marks by stable item id on regeneration
 - generate todos from that section only
-- write completed `[x]` marks back to that same blueprint after real validation
+- write `[_]` marks only from worker self-test evidence
+- write completed `[x]` marks back to that same blueprint only after master
+  integration and real validation
 
 ### Legacy private mirror
 Allowed only as a convenience mirror after the authoritative blueprint checklist already exists.
@@ -175,6 +193,8 @@ Every scheduler tick must call a bounded cleanup helper before `tmux` or `codex 
 - todo snapshots embedding `.cron/automation_repo*` absolute paths, causing noisy diffs and misleading progress references
 - implementation merged while blueprint/todo completion surfaces stayed stale, creating false "not done" reports
 - allowing workers to close blueprint/todo state directly instead of leaving dependency-gated closure to the main-session integration lane
+- treating `[_]` as done for progress, cleanup, release, or dependency closure
+- losing `[_]` state when regenerating a blueprint/todo from source
 - unbounded slot logs, keepalive logs, or stale automation workspaces consuming the Data volume
 - master integration validating worker outputs one by one even when multiple non-conflicting diffs total <=256KiB and could be batch-applied before dependency-ordered closure
 - reporting only closed checklist count without live worker count, claim count, saturation percentage, and landed-unclosed backlog, which hides whether the bottleneck is launch, worker runtime, merge conflict repair, or validation

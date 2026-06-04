@@ -25,15 +25,24 @@ checkbox states:
   the authoritative checkout, reran the required gates, reconciled completion
   surfaces, and accepted the item as complete.
 
-This is a two-cursor protocol. The worker cursor advances items from `[ ]` to
-`[_]`. The master cursor advances items from `[_]` to `[x]`. Workers must never
-write `[x]`, and the scheduler must never treat `[_]` as done.
+This is a two-cursor protocol, and the checkbox mark itself is the cursor
+state. The worker cursor advances items from `[ ]` to `[_]`. The master cursor
+advances items from `[_]` to `[x]`. Workers must never write `[x]`, and the
+scheduler must never treat `[_]` as done.
 
 Required behavior:
 
 - Checklist parsers must recognize `[ ]`, `[_]`, and `[x]`; any other checkbox
   state is invalid.
+- Generated blueprints, todos, ledgers, progress tables, summaries, and status
+  commands must preserve this exact state vocabulary instead of inventing
+  aliases such as `done`, `pending`, `landed`, or `validated` as replacement
+  completion states. Extra fields may add detail, but the checkbox remains the
+  source of truth.
 - Bootstrap generators initialize new items as `[ ]`.
+- Regenerators preserve existing `[ ]`, `[_]`, and `[x]` marks by item id and
+  may only downgrade a mark when a guard has explicit evidence that the current
+  mark is invalid.
 - Worker prompts must instruct workers to mark only their assigned items as
   `[_]` after implementation and self-test evidence exists.
 - Worker completion evidence must include changed paths, validation commands,
@@ -44,14 +53,22 @@ Required behavior:
 - Worker claim frontiers are computed from `[ ]` items only.
 - Main-session integration frontiers are computed from `[_]` items whose
   dependencies are `[x]` and whose path conflicts are resolved.
+- Live worker capacity is consumed by live claims only, not by `[_]` finished
+  items waiting for master integration.
 - Dependency closure treats `[ ]` and `[_]` as unfinished. A dependent item can
   be master-accepted only after all dependencies are `[x]`.
 - Cleanup is forbidden while any `[ ]` or `[_]` item remains.
+- Progress math must report three counts separately and may derive
+  `unfinished = count([ ]) + count([_])`; `[_]` must never be collapsed into
+  `[x]` for percentages, cleanup, or release gates.
 - If an item remains `[_]` across repeated master validation attempts, create a
   repair child item as `[ ]`, keep the parent `[_]`, and record the failed gate.
 - If a worker incorrectly writes `[x]`, the guard must downgrade it to `[_]`
   unless master validation evidence for that item already exists in the
   authoritative checkout.
+- If master validation fails after integrating a worker output, the authoritative
+  item stays `[_]`, the failed gate is recorded, and any follow-up repair item
+  starts as `[ ]`.
 
 ## Workflow
 

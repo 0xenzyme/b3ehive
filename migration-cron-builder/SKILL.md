@@ -33,14 +33,20 @@ todos must use exactly these three checkbox states:
   traceability, mapping policy, validators, rollback/equivalence evidence, and
   integrated the artifact into the authoritative output root.
 
-This is a two-cursor protocol. Workers advance items from `[ ]` to `[_]`.
-The master lane advances items from `[_]` to `[x]`. Workers must never write
-`[x]`, and cleanup must treat both `[ ]` and `[_]` as unfinished.
+This is a two-cursor protocol, and the checkbox mark itself is the cursor
+state. Workers advance items from `[ ]` to `[_]`. The master lane advances items
+from `[_]` to `[x]`. Workers must never write `[x]`, and cleanup must treat both
+`[ ]` and `[_]` as unfinished.
 
 Required behavior:
 
+- Checklist parsers must accept only `[ ]`, `[_]`, and `[x]`; any other
+  checkbox state is invalid.
 - Checklist generators initialize new migration items as `[ ]` and preserve
   existing `[_]` and `[x]` marks.
+- Regenerators preserve all three marks by stable source-target item id and may
+  only downgrade a mark when the migration reconciler has explicit evidence that
+  the current mark is invalid.
 - Worker prompts may mark only assigned items as `[_]` after target artifacts
   and item-level validator evidence exist.
 - Master reconciliation validates `[_]` items against the full migration spec,
@@ -48,10 +54,19 @@ Required behavior:
   failure ledger for rejected items.
 - Daily todos report separate counts for `not_migrated`,
   `worker_self_tested`, and `master_accepted`.
+- Generated specs, checklists, status reports, todos, ledgers, and manifests
+  must keep the checkbox state as the source of truth. Extra queue states such
+  as `live`, `finished`, `failed_validation`, or `needs_conflict_resolution` may
+  add operational detail but must not replace `[ ]`, `[_]`, or `[x]`.
 - Worker queues are built from `[ ]` items. Master integration queues are built
   from `[_]` items.
+- Live transformer capacity is consumed by live claims only, not by `[_]`
+  artifacts waiting for master integration.
 - Dependencies, mapping completeness, and cleanup treat `[ ]` and `[_]` as
   unfinished.
+- Progress math must report `unfinished = count([ ]) + count([_])`; `[_]` must
+  never count as accepted migration coverage for cleanup, release, or rollback
+  removal gates.
 
 ## Core Contract
 

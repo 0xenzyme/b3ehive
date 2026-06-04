@@ -24,24 +24,40 @@ three checkbox states:
   coverage, index rows, source-path alignment, substantive content, and all
   required research gates.
 
-This is a two-cursor protocol. Workers advance source items from `[ ]` to
-`[_]`. The master lane advances items from `[_]` to `[x]`. Workers must never
-write `[x]`, and cleanup must treat both `[ ]` and `[_]` as unfinished.
+This is a two-cursor protocol, and the checkbox mark itself is the cursor
+state. Workers advance source items from `[ ]` to `[_]`. The master lane
+advances items from `[_]` to `[x]`. Workers must never write `[x]`, and cleanup
+must treat both `[ ]` and `[_]` as unfinished.
 
 Required behavior:
 
+- Checklist parsers must accept only `[ ]`, `[_]`, and `[x]`; any other
+  checkbox state is invalid.
 - Checklist generators preserve existing `[_]` and `[x]` marks.
+- Regenerators preserve all three marks by stable source item id and may only
+  downgrade a mark when the reconciler has explicit evidence that the current
+  mark is invalid.
 - Daily todos report separate counts for `not_researched`, `worker_self_tested`,
   and `master_accepted`.
+- Generated checklists, indexes, todos, ledgers, and status commands must keep
+  the checkbox state as the source of truth. They may include richer fields
+  such as `live`, `finished`, `curating`, or `failed`, but those fields must not
+  replace `[ ]`, `[_]`, or `[x]`.
 - Worker prompts may mark only assigned source items, groups, or chunks as
   `[_]` after output files and self-test evidence exist.
 - Master reconciliation validates `[_]` items, promotes accepted items to `[x]`,
   and leaves rejected items as `[_]` with a failure ledger or creates `[ ]`
   repair items.
+- Researcher claim queues are built from `[ ]` items only. Curator/master queues
+  are built from `[_]` items only. Live worker capacity is consumed by live
+  claims, not by `[_]` outputs waiting for reconciliation.
 - Folder-level research may start only from `[x]` file-level inputs unless the
   blueprint explicitly defines a provisional folder pass.
 - Completion requires zero `[ ]` and zero `[_]` items across file, group, chunk,
   and folder checklists.
+- Progress math must report `unfinished = count([ ]) + count([_])`; `[_]` must
+  never count as accepted research for folder synthesis, cleanup, or release
+  gates.
 
 ## Workflow
 

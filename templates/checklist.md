@@ -5,7 +5,8 @@
 Use this three-state, dual-cursor protocol for execution, research, and
 migration checklists:
 
-- `[ ]` = not done. Work is still available for a worker claim.
+- `[ ]` = not done / not researched / not migrated. Work is still available
+  for a worker claim.
 - `[_]` = worker self-tested. A worker produced output and local validation
   evidence, but the master lane has not accepted and integrated it.
 - `[x]` = master accepted. The master lane validated, integrated, reconciled,
@@ -13,6 +14,10 @@ migration checklists:
 
 Workers may advance `[ ]` to `[_]` only. The master lane is the only actor that
 may advance `[_]` to `[x]`. Cleanup requires zero `[ ]` and zero `[_]` items.
+Generated todos, ledgers, indexes, progress tables, and status commands must
+preserve these exact marks as the source of truth. Queue labels such as `live`,
+`finished`, `curating`, or `failed` may add operational detail, but they do not
+replace the checkbox state.
 
 ## ✅ Done List
 _Recently completed items - celebrate progress!_
@@ -80,6 +85,9 @@ _Requires deep research before execution_
 
 | List | Total | Done | Progress |
 |------|-------|------|----------|
+| Not Done `[ ]` | - | - | - |
+| Worker Self-Tested `[_]` | - | - | - |
+| Master Accepted `[x]` | - | - | - |
 | Done | - | - | - |
 | To Do | - | - | - |
 | Later | - | - | - |

@@ -23,6 +23,26 @@ Different work needs different arrangements. A hard decision may need **debate**
 
 ---
 
+## Dual-Cursor Checklist Protocol
+
+The execution, research, and migration skills use one shared progress grammar.
+The checkbox mark is the cursor state:
+
+- `[ ]` means not done, not researched, or not migrated. The item is still
+  claimable by a worker.
+- `[_]` means worker self-tested. A worker produced output and evidence, but
+  master integration or curation has not accepted it.
+- `[x]` means master accepted. The master lane validated, integrated,
+  reconciled, and closed the item.
+
+Workers may only move `[ ] -> [_]`. The master lane is the only actor that may
+move `[_] -> [x]`. Cleanup requires zero `[ ]` and zero `[_]` items. Todos,
+ledgers, progress summaries, and status commands must preserve these exact
+marks; extra queue labels can add detail, but they do not replace the checkbox
+state.
+
+---
+
 ## Three Introductions
 
 | English | 中文 | 日本語 |

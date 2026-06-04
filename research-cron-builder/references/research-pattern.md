@@ -20,6 +20,29 @@
    - checkpoints progress locally
 4. Remove cron on completion.
 
+## Dual-Cursor Checklist Protocol
+
+Research progress uses exactly three checkbox states, and the mark itself is the
+cursor state:
+
+- `[ ]` means not researched. The item is available for a researcher worker
+  claim.
+- `[_]` means worker self-tested. The worker produced the required research
+  artifact, ran local output checks, and recorded evidence, but the master
+  curator has not accepted it.
+- `[x]` means master accepted. The master curator verified one-to-one coverage,
+  source-path alignment, index rows, substantive content, and required gates.
+
+Workers may only move `[ ] -> [_]`. The master lane is the only actor that may
+move `[_] -> [x]`. Cleanup, folder synthesis, and release gates require zero
+`[ ]` and zero `[_]` items. Daily todos must show separate counts for all three
+states and compute `unfinished = count([ ]) + count([_])`.
+
+Operational queue states such as `live`, `finished`, `curating`, `ok`, or
+`failed` may add detail in ledgers, but they do not replace the checkbox state.
+Researcher queues are built from `[ ]` items; curator queues are built from
+`[_]` items. Finished `[_]` outputs must not consume live worker capacity.
+
 ## Code-only scope rule
 
 Use code-only scope by default for repositories with heavy docs or generated content. Include:
@@ -68,3 +91,7 @@ Every research guard tick must run a bounded cleanup helper before launching or 
 - checklist corruption from non-atomic writes
 - completed repos left running because cleanup never fires
 - unbounded guard logs, worker logs, or stale workspaces consuming local disk
+- workers marking `[x]` directly instead of stopping at `[_]`
+- treating `[_]` as accepted research for folder synthesis, cleanup, or
+  release gates
+- losing `[_]` state when regenerating checklist or daily todo files
