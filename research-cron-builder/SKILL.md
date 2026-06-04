@@ -11,6 +11,38 @@ Build a code-only research pipeline that continuously reads source files, writes
 
 Final research artifacts must be one-to-one with the original researched files and must preserve the source tree shape under `Docs/researches/`: every source file in scope must have exactly one per-file research document at `Docs/researches/<source_path>_research.md`, even if files were grouped together for efficient worker prompts. Every represented source folder must have exactly one folder report at `Docs/researches/<folder_path>/current_folder_research.md`; the repository root report is `Docs/researches/current_folder_research.md`.
 
+## Dual-Cursor Checklist State Protocol
+
+All research checklists, indexes, and generated todos must use exactly these
+three checkbox states:
+
+- `[ ]` means not researched: no accepted worker research output exists yet.
+- `[_]` means worker self-tested: a worker produced the required research
+  artifact(s), ran the local output checks, and recorded evidence, but the
+  main/master lane has not reconciled and accepted the artifacts yet.
+- `[x]` means master accepted: the main/master lane verified one-to-one output
+  coverage, index rows, source-path alignment, substantive content, and all
+  required research gates.
+
+This is a two-cursor protocol. Workers advance source items from `[ ]` to
+`[_]`. The master lane advances items from `[_]` to `[x]`. Workers must never
+write `[x]`, and cleanup must treat both `[ ]` and `[_]` as unfinished.
+
+Required behavior:
+
+- Checklist generators preserve existing `[_]` and `[x]` marks.
+- Daily todos report separate counts for `not_researched`, `worker_self_tested`,
+  and `master_accepted`.
+- Worker prompts may mark only assigned source items, groups, or chunks as
+  `[_]` after output files and self-test evidence exist.
+- Master reconciliation validates `[_]` items, promotes accepted items to `[x]`,
+  and leaves rejected items as `[_]` with a failure ledger or creates `[ ]`
+  repair items.
+- Folder-level research may start only from `[x]` file-level inputs unless the
+  blueprint explicitly defines a provisional folder pass.
+- Completion requires zero `[ ]` and zero `[_]` items across file, group, chunk,
+  and folder checklists.
+
 ## Workflow
 
 1. Inspect the target repository state before changing anything.
@@ -31,8 +63,8 @@ Final research artifacts must be one-to-one with the original researched files a
 11. Install cron only after the manual run proves the pipeline can claim work, write bounded logs, and pass the disk/log budget guard.
 12. Use dual cursors for parallel research.
    The researcher claim cursor keeps claiming unchecked, unclaimed source shards up to the requested worker concurrency.
-   Finished group/chunk/file reports move to a curator queue for split, merge, index reconciliation, folder synthesis, and checklist closure; they must not consume researcher capacity or prevent later unclaimed shards from starting.
-13. If progress tables are broken, regenerate the checklist from repository state and reconcile `[x]` marks from existing research documents.
+   Finished group/chunk/file reports correspond to `[_]` checklist items and move to a curator queue for split, merge, index reconciliation, folder synthesis, and checklist closure; they must not consume researcher capacity or prevent later unclaimed shards from starting.
+13. If progress tables are broken, regenerate the checklist from repository state and reconcile `[_]` marks from worker-produced documents and `[x]` marks only from master-accepted research documents.
 14. On completion, remove cron entries and set the state file to `completed` only after the per-file 1:1 output check and folder-level index check pass.
 
 ## Grouped Input, Per-File Output
@@ -86,11 +118,12 @@ Validation must fail if final file reports live only under slug buckets such as 
 Create `Docs/researches/blueprint_checklist.md` from the repository tree.
 
 Requirements:
-- Preserve existing `[x]` marks when regenerating.
+- Preserve existing `[_]` and `[x]` marks when regenerating.
 - Write atomically via a temp file then `mv`.
 - Exclude `.git/`, `.cron/`, `Docs/researches/`, caches, build outputs, and dependency directories.
 - Prefer code-only filtering unless the user explicitly wants doc research.
 - Represent ungrouped work as `- [ ] [FILE] path` or grouped work as `- [ ] [GROUP] group-id ...`.
+- Represent worker-completed but not master-accepted work as `- [_] ...`; workers must never write `- [x] ...`.
 - For grouped work, write a stable manifest such as `Docs/researches/research_groups.tsv` that lists every file in each group and preserves group order.
 - For oversized chunked files, write `Docs/researches/chunk_manifest.tsv` and represent chunk work as `- [ ] [CHUNK] chunk-id source-path ...` or as grouped chunk work when chunks can be batched safely.
 - The manifest must cover each in-scope file exactly once.
@@ -101,7 +134,8 @@ Create `Docs/researches/todos_YYYYMMDD.md` from the checklist.
 
 Requirements:
 - Show snapshot counts: done, pending, pending groups/files, and total source files covered.
-- List only unchecked items.
+- Show separate snapshot counts for `[ ]`, `[_]`, and `[x]`.
+- List `[ ]` items in the worker queue and `[_]` items in the master reconciliation queue.
 - If pending is zero, render a single completed line instead of an empty section.
 - Regenerate idempotently.
 
@@ -132,11 +166,13 @@ Requirements:
 - Rotate `kimi` keys on auth/quota/rate-limit failures.
 - Distinguish between `completed`, `idle_waiting`, `exec_failed`, `exec_timeout`, and `running_exec`.
 - Reconcile checklist marks from existing non-empty research docs.
+- Reconcile `[_]` worker marks separately from `[x]` master-accepted marks.
 - For grouped input, split completed group reports into per-file reports before marking the run complete.
 - For oversized files, reconcile chunk reports first, then merge all OK chunks for a source file into exactly one per-file research document before marking the source file OK.
 - Generate or refresh folder-level research only after the per-file 1:1 check is OK.
 - Do not set state to `completed` until the per-file output count equals the source file count and every index row is OK.
 - Do not set state to `completed` until the folder research index also covers every represented folder with OK rows.
+- Do not set state to `completed` while any `[ ]` or `[_]` item remains.
 - Commit checkpoint progress with `docs(research): ...` messages when appropriate.
 - Emit milestone notifications if the repository uses progress alerts.
 - Run cleanup when pending items reach zero and cleanup is enabled.
@@ -168,7 +204,7 @@ Requirements:
 When a research repo is already in motion and the progress table is wrong:
 - Stop workers first.
 - Regenerate the checklist from repository state.
-- Reconcile `[x]` marks from existing `*_research.md` and `current_folder_research.md` files.
+- Reconcile `[_]` marks from worker-produced `*_research.md` files and `[x]` marks only from artifacts that pass master validation.
 - Regenerate today's todo.
 - Resume workers only after counts look sane.
 
@@ -184,6 +220,8 @@ Always perform these checks before declaring the cron ready:
 - manual checklist generation
 - manual todo generation
 - one manual `research_guard.sh` run
+- verify workers can advance a sample item only to `[_]`
+- verify master reconciliation can advance a validated `[_]` item to `[x]`
 - if grouping is used, run the split/index step and verify `source_file_count == per_file_research_doc_count == file_research_index_rows`, where `per_file_research_doc_count` counts only `Docs/researches/<source_path>_research.md` final artifacts
 - if oversized files are chunked, verify every `chunk_manifest.tsv` row is OK and every oversized source file has exactly one merged per-file research document
 - run folder research generation and verify `folder_research_index_rows == folder_research_doc_count` with all rows OK, where folder docs are `current_folder_research.md` files in source-tree-aligned directories

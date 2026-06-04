@@ -12,13 +12,54 @@ Default gate posture is strict: no mock completion, and no upper-layer completio
 Default commit posture is code-first: never commit cron/private artifacts, never commit tests from automation batches, and keep docs commits less than or equal to code commits per batch.
 Default orchestration posture is split-lane DAG aware: tmux workers claim implementation work in DAG/topological order up to the user-requested max concurrency, while the main session integrates, validates, and closes work strictly in DAG dependency order with conflict and completion gates enforced.
 
+## Dual-Cursor Checklist State Protocol
+
+All execution checklists and generated todos must use exactly these three
+checkbox states:
+
+- `[ ]` means not done: unclaimed, not yet implemented, or still requiring a worker.
+- `[_]` means worker self-tested: worker output exists and the worker's local
+  validation passed, but the main/master integration lane has not accepted,
+  merged, and revalidated it yet.
+- `[x]` means master accepted: the main/master lane integrated the output into
+  the authoritative checkout, reran the required gates, reconciled completion
+  surfaces, and accepted the item as complete.
+
+This is a two-cursor protocol. The worker cursor advances items from `[ ]` to
+`[_]`. The master cursor advances items from `[_]` to `[x]`. Workers must never
+write `[x]`, and the scheduler must never treat `[_]` as done.
+
+Required behavior:
+
+- Checklist parsers must recognize `[ ]`, `[_]`, and `[x]`; any other checkbox
+  state is invalid.
+- Bootstrap generators initialize new items as `[ ]`.
+- Worker prompts must instruct workers to mark only their assigned items as
+  `[_]` after implementation and self-test evidence exists.
+- Worker completion evidence must include changed paths, validation commands,
+  validation output summary, and branch/worktree/commit reference when
+  applicable.
+- Daily todos must report counts for `not_done`, `worker_self_tested`, and
+  `master_accepted`.
+- Worker claim frontiers are computed from `[ ]` items only.
+- Main-session integration frontiers are computed from `[_]` items whose
+  dependencies are `[x]` and whose path conflicts are resolved.
+- Dependency closure treats `[ ]` and `[_]` as unfinished. A dependent item can
+  be master-accepted only after all dependencies are `[x]`.
+- Cleanup is forbidden while any `[ ]` or `[_]` item remains.
+- If an item remains `[_]` across repeated master validation attempts, create a
+  repair child item as `[ ]`, keep the parent `[_]`, and record the failed gate.
+- If a worker incorrectly writes `[x]`, the guard must downgrade it to `[_]`
+  unless master validation evidence for that item already exists in the
+  authoritative checkout.
+
 ## Workflow
 
 1. Inspect the repository and identify the single blueprint source.
 2. Freeze the execution boundary.
    The cron must treat exactly one file as the requirement source.
 3. If the blueprint is prose-first, generate an authoritative execution checklist section into that same blueprint before enabling cron.
-   Initialize every execution item as `[ ]` on first bootstrap, and generate daily todos from that authoritative checklist section only.
+   Initialize every execution item as `[ ]` on first bootstrap, preserve existing `[_]` and `[x]` states on regeneration, and generate daily todos from that authoritative checklist section only.
 4. Add private `.ops/` and `.cron/` helpers locally and hide them from git where appropriate.
 5. Create the four required pieces:
    - authoritative checklist/bootstrap generator
@@ -48,13 +89,14 @@ Default orchestration posture is split-lane DAG aware: tmux workers claim implem
 15. Add a main-session integration queue for landed worker outputs.
    The queue must scan claimed worker workspaces, report changed files and diff byte counts, detect path conflicts, and classify outputs whose combined diff is <=256KiB as small-diff batch candidates.
 16. Keep worker claim and master integration as separate cursors.
-   The worker cursor is saturated from open DAG nodes whose claim state is `unclaimed` or `live`; `finished` claims belong to the master integration queue and must not consume worker capacity or stop later unclaimed nodes from being claimed.
+   The worker cursor is saturated from open DAG nodes whose claim state is `unclaimed` or `live`; `finished` claims correspond to `[_]` checklist items, belong to the master integration queue, and must not consume worker capacity or stop later unclaimed nodes from being claimed.
    Todo generation must show both cursors: the worker claim frontier for concurrency filling, and the master integration frontier/queue for DAG-ordered validation and closure.
    Heavy integration queue scans must not block worker refill; run them after refill, incrementally, or behind an explicit refresh flag.
 17. Allow batch integration of small worker diffs, with strict closure gates.
    The main session may batch apply multiple worker diffs when their combined diff is <=256KiB and path conflicts are absent or explicitly resolved. It must still validate and close checklist items in DAG dependency order, and must update the authoritative blueprint/todo after each accepted closure or coherent validated batch.
    Batch application is an integration acceleration path, not a dependency bypass: apply the non-conflicting diffs together, run validation on the combined tree, then write `[x]` marks only for the longest dependency-ordered prefix whose gates pass.
 18. After every successful batch, sync completion back to the authoritative blueprint and refresh today's todo in the main repo.
+   Worker batches may sync only `[_]` marks and evidence; only the main/master lane may sync `[x]` marks.
 19. Enforce documentation reconciliation as a success gate:
    - if a batch closes checklist items, all required completion surfaces must be updated in the same batch (for example `Overall Blueprint + Stage Blueprint + today's todo`)
    - todo references must use stable repository paths, never automation clone absolute paths
@@ -62,7 +104,8 @@ Default orchestration posture is split-lane DAG aware: tmux workers claim implem
 20. If the same `[ ]` item remains unresolved for repeated ticks (default >=5), auto-split it into child checklist items in the blueprint, regenerate today's todo, and notify the human with the split details.
 21. Clean up the cron when the blueprint is complete and validation passes.
    Cleanup must use hard conditions:
-   - authoritative blueprint has zero unchecked items
+   - authoritative blueprint has zero `[ ]` items
+   - authoritative blueprint has zero `[_]` items
    - latest todo snapshot shows `Unfinished = 0`
    - no running `codex` process in automation repos
    - no pending checkpoint artifact remains
@@ -111,14 +154,18 @@ Requirements:
 - If the blueprint starts as prose, generate an execution checklist section into the blueprint and seed it with all `[ ]` marks before the first cron tick.
 - Generate a daily `todos_YYYYMMDD.md` from that authoritative checklist section.
 - Daily todos must include the current DAG of unfinished checklist items:
-  - one node per unfinished item
+  - one node per `[ ]` or `[_]` unfinished item
   - dependency ids for every node
+  - checkbox state (`[ ]`, `[_]`, or `[x]`)
   - worker claim state and integration-ready/blocked state
   - claim owner, if any
   - owned path scope
   - worker claim frontier, main-session integration frontier, and user concurrency saturation status
   - cycle detection result
+- Daily todos must show separate counts for `[ ]`, `[_]`, and `[x]`.
+- `[_]` items must appear in an integration-ready or integration-blocked section, never in the worker-claim section unless a repair child was generated.
 - Successful batches must update the authoritative blueprint and then refresh today's todo.
+- Worker successful batches update assigned items to `[_]`; master successful integration batches update accepted items to `[x]`.
 - If the repo requires multiple completion surfaces, successful batches must reconcile all of them in the same batch.
 - Todo item source references must be stable repository-relative paths (do not leak `.cron/automation_repo*` absolute paths).
 - Do not let other docs become accidental requirement sources.
@@ -141,6 +188,8 @@ Requirements:
 - Newly launched `tmux` codex workers must honor the requested service tier in their `codex exec` configuration; if unset, use and print the repo default.
 - Worker count is saturated from the todo DAG order: never exceed the user's max concurrency, but do not reduce worker count merely because dependencies are unfinished or owned paths overlap.
 - The main session is allowed to claim work directly, but should preferentially own integration, validation, dependency-gated closure, merge, and conflict-unblocking tasks when worker branches/worktrees land.
+- Workers must not mark checklist items `[x]`. Their terminal success state is `[_]` plus evidence.
+- The main session is the only actor allowed to promote `[_]` to `[x]`.
 - Worker prompt root rule:
   - the prompt's `Repository root` must equal the automation clone path where the command is launched
   - include a line like `Work only inside this worker automation clone: <clone path>`
@@ -163,15 +212,16 @@ Requirements:
 - Skip overlap if another `codex exec` is already running in the same worker repo.
 - Enforce a single blueprint source.
 - Enforce one authoritative execution checklist inside that blueprint.
+- Enforce the dual-cursor checkbox protocol: `[ ]` for not done, `[_]` for worker self-tested, `[x]` for master accepted.
 - Enforce todo DAG generation for unfinished checklist items before selecting work:
   - parse item ids and dependency metadata from the authoritative checklist or a repo-local dependency map generated from it
   - reject cycles and duplicate ids
-  - compute worker-claim order from the DAG topological order and first-open layer/cluster
-  - compute the main-session integration frontier by excluding nodes whose dependencies are incomplete, whose prerequisite worker output has not landed, or whose path conflicts are unresolved
+  - compute worker-claim order from `[ ]` nodes in DAG topological order and first-open layer/cluster
+  - compute the main-session integration frontier from `[_]` nodes by excluding nodes whose dependencies are incomplete, whose prerequisite worker output has not landed, or whose path conflicts are unresolved
   - write both the worker claim frontier and the integration frontier into today's todo before spawning or claiming work
 - Select only the first still-open cluster and keep each run bounded.
 - Select the first still-open cluster before removing claimed items.
-  Worker spawn may claim additional unclaimed nodes from that cluster in DAG/topological order until user-requested concurrency is full, even when earlier nodes are already claimed by live workers.
+  Worker spawn may claim additional unclaimed `[ ]` nodes from that cluster in DAG/topological order until user-requested concurrency is full, even when earlier nodes are already claimed by live workers.
   Do not choose the first unclaimed cluster; that skips lower-layer ordering and violates strict layer execution. Only the main-session integration lane may decide that a later cluster can close, and only after lower DAG dependencies are complete.
 - Keep worker claiming separate from integration readiness.
   The scheduler must fill available worker slots from the ordered DAG claim frontier up to the user concurrency cap, even when those nodes depend on earlier unfinished work or touch overlapping path families.
@@ -194,12 +244,13 @@ Requirements:
   - If upper-layer `[x]` is detected while lower-layer `[ ]` still exists, auto-reset those upper-layer `[x]` items to `[ ]` in the authoritative blueprint, regenerate todo, and continue.
   - Block only when autoclear is disabled or re-validation still fails after autoclear.
 - Detect repeated unresolved items: when the same checklist item remains unresolved for repeated ticks (default >=5), split it into child checklist items and sync blueprint/todo.
-- Parent-child closure rule: if all child checklist items are `[x]`, auto-close parent as `[x]`; if any child is `[ ]`, parent must remain `[ ]`.
+- Parent-child closure rule: if all child checklist items are `[x]`, auto-close parent as `[x]`; if any child is `[ ]`, parent must remain `[ ]`; if any child is `[_]` and none are `[ ]`, parent may become `[_]` but not `[x]`.
 - Record milestone progress counts for successful commit/push batches when the repo uses notifications.
 - Treat the main session as worker id `main-session` for integration claims, progress, and conflict cleanup.
   The main session may claim integration-ready DAG nodes under the active goal and may claim repair nodes that unblock merge/rebase conflicts from worker worktrees.
   Conflict cleanup must be explicit: identify both sides, preserve user/worker changes where possible, run validation, and checkpoint the consolidation only after the merged tree is coherent.
 - On success, checkpoint and push changes, then sync completion back to the main blueprint and today's todo.
+- Worker success means `[_]`; master success means `[x]`.
 - Treat incomplete completion-surface backfill as a hard failure (for example: stage blueprint updated but overall blueprint or today's todo not updated when required).
 - On no-op completion, validate and then stop instead of inventing work.
 - Enforce commit-surface filtering before commit:
@@ -232,8 +283,8 @@ Requirements:
   - keep workers on their own state files instead of sharing the scheduler state file
   - if the guard reports repeated "previous run still active" while no real scheduler is active, inspect inherited lock holders (for example `/proc/<pid>/fd/*`) and repair before continuing
 - Prefer split-lane DAG ownership over worker-side dependency throttling:
-  - workers own implementation claims from the first-open layer/cluster in stable DAG/topological order, up to the user concurrency cap
-  - the main session owns integration closure, validation, dependency gating, and merge/conflict repair by default
+  - workers own `[ ]` implementation claims from the first-open layer/cluster in stable DAG/topological order, up to the user concurrency cap
+  - the main session owns `[_]` integration closure, validation, dependency gating, and merge/conflict repair by default
   - no worker may claim outside the current ordered DAG claim frontier, but workers may produce provisional output for nodes whose dependencies are not yet integrated
 - Add an integration batching lane:
   - maintain a queue of landed worker outputs with item id, dependencies, owned paths, changed files, diff bytes, and validation command hints
@@ -278,12 +329,13 @@ Minimum gate set:
 
 Bootstrap and reporting rule:
 - before the first cron tick, the authoritative blueprint checklist must exist and start with `[ ]` marks
-- after each successful batch, the authoritative blueprint and today's todo must both reflect the new completion state
+- after each successful worker batch, the authoritative blueprint and today's todo must both reflect `[_]` state with worker evidence
+- after each successful master integration batch, the authoritative blueprint and today's todo must both reflect `[x]` state with master validation evidence
 - after repeated unresolved ticks for the same `[ ]` item (default >=5), the cron must auto-split that item into child checklist items and report the split explicitly
 
 Cleanup hard-gate rule:
 - Cron cleanup must not be triggered by blueprint-only signal.
-- Require at least these signals at the same tick: blueprint unchecked=0 + latest todo `Unfinished=0` + no active automation `codex` run + no pending checkpoint files.
+- Require at least these signals at the same tick: blueprint `[ ]` count=0 + blueprint `[_]` count=0 + latest todo `Unfinished=0` + no active automation `codex` run + no pending checkpoint files.
 - Set final state to `completed` only after cleanup script succeeds and crontab no longer contains the target guard line.
 
 Do not mark items done for:

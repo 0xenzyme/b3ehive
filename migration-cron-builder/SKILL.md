@@ -19,6 +19,40 @@ Migration here means **contracted transformation**, not only tool compatibility.
 
 This skill is the migration generalization of an execution cron: instead of "read blueprint -> implement missing work", it runs "read source contract -> produce target artifact -> validate equivalence -> checkpoint progress".
 
+## Dual-Cursor Checklist State Protocol
+
+All migration specs, authoritative checklists, status reports, and generated
+todos must use exactly these three checkbox states:
+
+- `[ ]` means not migrated: no validated worker target artifact exists yet.
+- `[_]` means worker self-tested: a worker produced the assigned target
+  artifact(s), ran the item validator, and recorded evidence, but the
+  main/master lane has not reconciled the target set into the authoritative
+  repo yet.
+- `[x]` means master accepted: the main/master lane verified source-target
+  traceability, mapping policy, validators, rollback/equivalence evidence, and
+  integrated the artifact into the authoritative output root.
+
+This is a two-cursor protocol. Workers advance items from `[ ]` to `[_]`.
+The master lane advances items from `[_]` to `[x]`. Workers must never write
+`[x]`, and cleanup must treat both `[ ]` and `[_]` as unfinished.
+
+Required behavior:
+
+- Checklist generators initialize new migration items as `[ ]` and preserve
+  existing `[_]` and `[x]` marks.
+- Worker prompts may mark only assigned items as `[_]` after target artifacts
+  and item-level validator evidence exist.
+- Master reconciliation validates `[_]` items against the full migration spec,
+  promotes accepted items to `[x]`, and creates `[ ]` repair items or records a
+  failure ledger for rejected items.
+- Daily todos report separate counts for `not_migrated`,
+  `worker_self_tested`, and `master_accepted`.
+- Worker queues are built from `[ ]` items. Master integration queues are built
+  from `[_]` items.
+- Dependencies, mapping completeness, and cleanup treat `[ ]` and `[_]` as
+  unfinished.
+
 ## Core Contract
 
 Every migration cron must freeze these five things before installation:
@@ -60,6 +94,7 @@ For code migrations, prefer a runnable target package or module tree under a tar
 7. Workers must not mutate source artifacts.
    If in-place migration is required, use a separate staging clone and merge only after validation.
 8. Validate every target artifact before copying or syncing it back into the authoritative repo.
+   Worker validation may advance an item only to `[_]`; master validation and integration are required for `[x]`.
 9. Defer repeat validation failures within each shard so fresh items keep flowing.
 10. Use dual cursors for migration throughput.
    The transformer claim cursor fills worker slots from unchecked, unclaimed source-to-target shards.
@@ -97,6 +132,8 @@ Default checklist item format:
 
 ```text
 - [ ] source/path.ext -> target/path.ext | validator: <command or rule>
+- [_] source/path.ext -> target/path.ext | validator: <command or rule> | worker evidence: <ref>
+- [x] source/path.ext -> target/path.ext | validator: <command or rule> | master evidence: <ref>
 ```
 
 Default target artifact requirements:
@@ -222,6 +259,8 @@ Do not mark a migration item complete for:
   - write cleanup decisions to a bounded janitor log, not to an unbounded cron log
 - Workers must write only the target artifact(s) assigned by the current checklist item.
 - Workers must not edit source artifacts.
+- Workers must not mark migration items `[x]`; their terminal success mark is `[_]`.
+- The main/master lane is the only actor allowed to promote `[_]` to `[x]`.
 - Scheduler progress should be queryable via a machine-readable status command.
 - Keep failed items in the checklist with a failure ledger instead of repeatedly blocking the same shard.
 - Sync only validated outputs into the authoritative repo.
@@ -243,7 +282,8 @@ Minimum behavior:
 
 Only clean up when:
 
-- authoritative migration checklist has zero unchecked items
+- authoritative migration checklist has zero `[ ]` items
+- authoritative migration checklist has zero `[_]` items
 - current todo shows zero unfinished items
 - every completed item has a target artifact or recorded generated-support output
 - validators pass for the completed target set

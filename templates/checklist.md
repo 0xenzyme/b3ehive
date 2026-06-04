@@ -1,11 +1,30 @@
 # Project Checklist
 
+## Checkbox State Protocol
+
+Use this three-state, dual-cursor protocol for execution, research, and
+migration checklists:
+
+- `[ ]` = not done. Work is still available for a worker claim.
+- `[_]` = worker self-tested. A worker produced output and local validation
+  evidence, but the master lane has not accepted and integrated it.
+- `[x]` = master accepted. The master lane validated, integrated, reconciled,
+  and accepted the item.
+
+Workers may advance `[ ]` to `[_]` only. The master lane is the only actor that
+may advance `[_]` to `[x]`. Cleanup requires zero `[ ]` and zero `[_]` items.
+
 ## ✅ Done List
 _Recently completed items - celebrate progress!_
 
 - [x] Initial project setup
 - [x] Core architecture defined
 - [x] Basic implementation complete
+
+## 🧪 Worker Self-Tested
+_Worker output exists; master validation/integration is still pending._
+
+- [_] Worker-completed item waiting for master acceptance
 
 ---
 
