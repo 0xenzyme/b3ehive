@@ -39,57 +39,13 @@ b3ehive 不是代码生成器，而是**按科学方法组织的集体工作**�
 
 ## 二、Blueprint（蓝图）
 
-### 2.1 Blueprint 是什么
+Blueprint 是 b3ehive 工作流的**唯一权威需求源**，是整个蜂群的"心脏"和"燃料"。
 
-在 b3ehive 中，**Blueprint 是唯一权威的需求源**。它是整个蜂群工作流的"心脏"和"燃料"。
+它不是一个静态的 Spec 文档，而是**可执行的、自带状态的、驱动机器工作**的活的规格说明。Blueprint 内嵌 checklist（`- [ ]` / `- [x]`）、依赖 DAG、分层结构，guard 直接读取它来决定"今天做什么、做到哪了、下一步做什么"。
 
-核心特征：
+> **一句话：传统 Spec 回答"做什么"，Blueprint 回答"做什么 + 做到哪了 + 下一步做什么 + 能不能做"。**
 
-| 特征 | 说明 |
-|---|---|
-| **唯一性** | 每个 Skill 有且只有一个 blueprint 文件，禁止多个需求来源互相冲突 |
-| **自带 Checklist** | Blueprint 内包含 `- [ ]` / `- [x]` 标记的执行清单，本身就是进度表 |
-| **自带依赖 DAG** | Checklist 项之间可以定义依赖关系，生成每日 todo 时变成拓扑排序的 DAG |
-| **动态更新** | 每完成一批工作，guard 会把 `[ ]` 改为 `[x]` 写回 blueprint，它是活的 |
-| **分层结构** | 可定义"层"（layer），强制执行"底层未完成前上层不能关闭" |
-
-### 2.2 Blueprint vs. 传统 Spec
-
-| 传统 Spec | b3ehive Blueprint |
-|---|---|
-| 静态文档，写给人看 | 动态文档，给机器执行 |
-| 需求描述 + 验收标准 | 需求描述 + **执行清单** + **实时进度** + **依赖关系** |
-| 开发完成后归档 | 开发过程中不断被修改（打勾、拆分、更新） |
-| 可能有多个子文档 | **有且只有一个权威源** |
-| 完成状态在 Jira/Trello 里 | 完成状态就在 blueprint 文件本身里 |
-
-> **Blueprint = Spec（需求规格）+ Task Board（任务板）+ State Store（状态存储），三合一。**
-
-### 2.3 不同 Skill 中的 Blueprint 形态
-
-| Skill | Blueprint 的具体形态 |
-|---|---|
-| `execution-cron-builder` | 一个 Markdown 文件，里面有散文式需求描述 + checklist 段落。cron 按 checklist 逐项实现代码。 |
-| `research-cron-builder` | 生成的 `blueprint_checklist.md`，从仓库树扫描而来，每个源码文件对应一个研究任务。 |
-| `optimization-cron-builder` | `Stage_*_AR_Blueprint.md`，从设计理念推导出的架构优化清单，每项对应一篇研究文档。 |
-| `debating-cron-builder` | **没有 blueprint**。输入是 `task_description` + `constraints`，3 个 agent 直接竞争实现。 |
-| `migration-cron-builder` | 核心文档是 `MIGRATION_SPEC.md`，属于 blueprint 的"迁移泛化"：用 source→target contract 替代 blueprint。 |
-
-### 2.4 Blueprint 的生命周期
-
-```
-Bootstrap:   初始化 checklist，所有项标记为 [ ]
-    ↓
-Daily Todo:  从 blueprint 的未完成项生成当日 todo（含 DAG 依赖）
-    ↓
-Worker 执行: 按 DAG 顺序 claim 任务，产出代码/文档
-    ↓
-Validation:  运行验证门（编译、测试、lint 等）
-    ↓
-Checkpoint:  通过后，将 [ ] 改为 [x]，写回 blueprint
-    ↓
-Cleanup:     当 blueprint 中所有项都变为 [x]，cron 自动停止并清理自身
-```
+详细说明见：[Blueprint 详解](./blueprint.md)
 
 ---
 
