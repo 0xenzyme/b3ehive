@@ -176,6 +176,9 @@ Requirements:
   - claim ledger states must distinguish `live`, `finished`, `curating`, `ok`, and `failed`
   - only live researcher processes reduce available worker lanes
   - finished worker outputs enter a curator queue and do not block the guard from scanning forward to unclaimed unchecked items
+  - refresh worker self-test/output manifests into the claim ledger at the start of every guard tick, including drain/no-new-claim mode
+  - drain mode may disable new claims, but it must still promote completed worker outputs from `live` or `selftest_missing` to `finished`/`failed` and regenerate the todo so the researcher cursor cannot freeze behind stale ledger state
+  - self-test/output manifest lookup must accept both session-only and item-qualified names, for example `research_12.json` and `src_path_hash.research_12.json`
   - daily todos must show both the researcher claim frontier and the curator frontier, with counts for live, finished-awaiting-curation, ok, failed, and unclaimed
   - heavy curator scans such as per-file split validation, chunk merge checks, and folder-index synthesis should run after worker refill, incrementally, or behind an explicit refresh flag
 - When the requested concurrency is high, select claims under one lock but prepare worker prompts/workspaces with bounded parallelism so clone, sync, and startup overhead do not serialize the whole run.

@@ -246,6 +246,9 @@ Requirements:
 - Implement worker and master ledgers as independent queues.
   The worker claim ledger records reservations and liveness; only `live` reservations reduce available worker lanes.
   `finished` reservations are inputs to the integration queue and must not prevent the scheduler from scanning forward to later unclaimed open DAG nodes.
+  Refresh worker self-test manifests into the claim ledger at the start of every guard tick, including drain/no-new-claim mode.
+  Drain mode may disable new claims, but it must still promote completed worker self-tests from `live` or `selftest_missing` to `finished` and regenerate the todo so the worker cursor cannot freeze behind stale ledger state.
+  Self-test manifest lookup must accept both session-only and item-qualified names, for example `worker_12.json` and `item_id.worker_12.json`.
   The integration queue records landed outputs, diff bytes, changed files, path conflicts, validation hints, and small-diff batch eligibility.
   Refreshing that integration metadata is master work and must not be placed on the critical path before worker refill unless the operator explicitly requests it.
 - When high concurrency is requested, parallelize worker preparation safely.

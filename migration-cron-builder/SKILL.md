@@ -257,6 +257,9 @@ Do not mark a migration item complete for:
   - the transformer claim ledger records source artifact, target artifact, validator, worker slot, workspace, state, claim time, and path scope
   - only `live` transformer workers reduce available worker lanes
   - `finished`, `failed_validation`, and `needs_conflict_resolution` outputs belong to the integrator queue and must not block new unchecked, unclaimed shards from being claimed
+  - refresh worker self-test/output manifests into the claim ledger at the start of every scheduler tick, including drain/no-new-claim mode
+  - drain mode may disable new claims, but it must still promote completed worker outputs from `live` or `selftest_missing` to `finished`, `failed_validation`, or `needs_conflict_resolution` and regenerate the todo so the transformer cursor cannot freeze behind stale ledger state
+  - self-test/output manifest lookup must accept both session-only and item-qualified names, for example `migration_12.json` and `source_path_hash.migration_12.json`
   - the integrator queue records target paths, changed files, diff bytes or artifact bytes, validator hints, conflicts, and batch eligibility
   - daily todos/status output must show both cursors: transformer claim frontier and integrator validation frontier
   - heavy integrator scans should run after worker refill, incrementally, or behind an explicit refresh flag
