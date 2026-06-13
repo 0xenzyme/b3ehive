@@ -2,8 +2,8 @@
   "name": "b3ehive",
   "slug": "b3ehive",
   "displayName": "b3ehive - Five Swarm Algorithms",
-  "version": "1.3.0",
-  "description": "A hive of five agent swarm skills: debating, execution, research, optimization, and migration cron builders.",
+  "version": "1.4.0",
+  "description": "A hive of five Codex and Claude Code compatible agent swarm skills: debating, execution, research, optimization, and migration cron builders.",
   "author": "weiyangzen",
   "license": "MIT",
   "homepage": "https://github.com/weiyangzen/b3ehive",
@@ -16,6 +16,8 @@
   },
   "keywords": [
     "openclaw",
+    "codex",
+    "claude-code",
     "skill",
     "multi-agent",
     "competition",
@@ -43,6 +45,7 @@
     "research-cron-builder/",
     "optimization-cron-builder/",
     "migration-cron-builder/",
+    "docs/",
     "SKILL.md",
     "README.md",
     "LICENSE"
@@ -59,5 +62,25 @@
         "openai-proxy/gpt-5.3-codex"
       ]
     }
+  },
+  "codex": {
+    "skills": [
+      "debating-cron-builder",
+      "execution-cron-builder",
+      "research-cron-builder",
+      "optimization-cron-builder",
+      "migration-cron-builder"
+    ],
+    "installRoot": "~/.codex/skills"
+  },
+  "claudeCode": {
+    "skills": [
+      "debating-cron-builder",
+      "execution-cron-builder",
+      "research-cron-builder",
+      "optimization-cron-builder",
+      "migration-cron-builder"
+    ],
+    "installRoot": "~/.claude/skills"
   }
 }

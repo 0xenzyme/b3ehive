@@ -19,8 +19,14 @@
    can move `[_] -> [x]`.
 5. Generate a daily todo from that authoritative checklist section, including the current dependency DAG for unfinished items.
 6. Use an isolated automation repo when the main repo may be dirty.
-7. Run `codex exec --model <requested-or-latest-high-model> -c model_reasoning_effort="xhigh"` in bounded clusters.
-   New `tmux` workers must honor explicit `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, and `CODEX_SERVICE_TIER` values. If no service tier is specified, print and use the repo default instead of silently changing the operator's requested tier.
+7. Run the selected agent runner in bounded clusters.
+   Codex workers use `codex exec`; Claude Code workers use `claude -p`.
+   New `tmux` workers must honor explicit `B3EHIVE_AGENT_PLATFORM`,
+   `B3EHIVE_AGENT_RUNNER`, `CODEX_MODEL`, `CODEX_REASONING_EFFORT`,
+   `CODEX_SERVICE_TIER`, `CLAUDE_MODEL`, `CLAUDE_EFFORT`, and
+   `CLAUDE_PERMISSION_MODE` values. If a service tier or permission mode is not
+   specified, print and use the repo default instead of silently changing the
+   operator's requested setting.
 8. Enforce strict layer gate: only work on the finest still-open layer; do not close upper layers while lower layers are open.
 9. Validate honestly.
 10. Commit/push only real work.
@@ -51,7 +57,8 @@
    - never let `[_]` finished claims consume live worker capacity
    - keep claims only when the item is open and the assigned worker is still live
    - log every released claim to an audit ledger
-   - use self-match-safe process checks such as `[c]odex exec...`
+   - use self-match-safe process checks for the selected runner, such as
+     `[c]odex exec...` or `[c]laude -p...`
 16. Treat `VALIDATE_ONLY=1` as a dry gate only.
    It may validate sync, DAG, budget, and configuration state, but it must exit before worker claims or `tmux` spawn. Do not use validate-only when the purpose is to saturate worker lanes.
 17. Sync the main blueprint and today's todo after each successful batch.
@@ -90,7 +97,9 @@ Use this when one worker is leaving material throughput on the table and the use
 - Keep the scheduler's state file authoritative; workers should write only to slot-specific state files.
 - Force explicit ownership from DAG nodes and path scopes.
 - The main session owns dependency-gated integration closure, validation, and merge/conflict repair unless a human assigns that role elsewhere.
-- Every newly launched `tmux` worker command must honor the requested service tier; if none is set, use and print the repo default.
+- Every newly launched `tmux` worker command must honor the selected platform's
+  requested service tier or permission mode; if none is set, use and print the
+  repo default.
 - Require every worker batch to start with `fetch + pull --ff-only` or `fetch + rebase`.
 - Require every worker push to rebase and resolve only inside that worker's owned paths when possible; if a dependency or path conflict requires cross-node judgment, leave it for the main-session integration lane.
 - Keep blueprint/todo mutation centralized to one integration lane after honest validation on the combined tree and after DAG dependencies are satisfied.
@@ -154,11 +163,12 @@ Allowed only as a convenience mirror after the authoritative blueprint checklist
 
 ## Space and log budget
 
-Every scheduler tick must call a bounded cleanup helper before `tmux` or `codex exec` launch.
+Every scheduler tick must call a bounded cleanup helper before `tmux` or selected agent-runner launch.
 
 - Use environment-overridable defaults: `MIN_FREE_GB=30`, `DANGER_FREE_GB=15`, `MAX_LOG_MB=20`, `MAX_KEEPALIVE_MB=5`, `LOG_RETENTION_DAYS=3`, `WORKSPACE_TTL_HOURS=48`, `MAX_CRON_ROOT_GB=30`.
 - Trim active logs by keeping the tail with `tail -c` and atomic `mv`; avoid unbounded `>> keepalive.log` growth.
-- Delete only stale workspaces whose paths are not referenced by live `codex`, `tmux`, shell, pid, or lock state.
+- Delete only stale workspaces whose paths are not referenced by the selected
+  live agent runner, `tmux`, shell, pid, or lock state.
 - If cleanup cannot bring the cron root under budget, write `blocked_disk_space` state and skip worker spawn.
 
 ## Common failure modes
@@ -183,7 +193,7 @@ Every scheduler tick must call a bounded cleanup helper before `tmux` or `codex 
 - repeated unresolved checklist items without automatic split into executable child items
 - todo DAG missing, stale, cyclic, or inconsistent with current unchecked blueprint items
 - throttling worker sessions to the dependency-ready frontier instead of filling the user-requested concurrency from the ordered DAG claim frontier
-- silently overriding the operator-requested worker service tier
+- silently overriding the operator-requested worker service tier or permission mode
 - treating the main session as scheduler-only, leaving merge conflicts from worker landings unresolved
 - stale claims reserve open items for 24h even though the worker exited or failed
 - first-unclaimed selection skips a lower open cluster and starts upper-cluster work

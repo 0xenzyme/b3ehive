@@ -1,5 +1,7 @@
 # b3ehive
 
+[![Codex Skill](https://img.shields.io/badge/Codex-Skill-blue)](https://github.com/openai/codex)
+[![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-orange)](https://docs.anthropic.com/en/docs/claude-code)
 [![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-blue)](https://openclaw.ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -71,13 +73,30 @@ Clone the whole hive:
 git clone https://github.com/weiyangzen/b3ehive.git
 ```
 
-Install all five Codex skills:
+Install all five skills for both Codex and Claude Code:
 
 ```bash
-for skill in debating-cron-builder execution-cron-builder research-cron-builder optimization-cron-builder migration-cron-builder; do
-  cp -a "b3ehive/$skill" ~/.codex/skills/
-done
+cd b3ehive
+scripts/install_skills.sh --target both --scope user
 ```
+
+Install only one target when needed:
+
+```bash
+scripts/install_skills.sh --target codex --scope user
+scripts/install_skills.sh --target claude --scope user
+```
+
+Project-local installs are also supported:
+
+```bash
+scripts/install_skills.sh --target both --scope project --project-dir /path/to/repo
+```
+
+The portable skill layout is documented in
+[docs/agent-platforms.md](docs/agent-platforms.md). Codex uses
+`~/.codex/skills/<skill>/SKILL.md`; Claude Code uses
+`~/.claude/skills/<skill>/SKILL.md`.
 
 ## Quick Start
 
@@ -99,6 +118,9 @@ Use optimization-cron-builder with this design philosophy.
 Use migration-cron-builder to migrate one artifact contract into another.
 ```
 
+In Claude Code you can also invoke a skill with slash syntax, for example
+`/execution-cron-builder`.
+
 ## What Makes b3ehive Different
 
 | Traditional AI | b3ehive |
@@ -116,6 +138,7 @@ Use migration-cron-builder to migrate one artifact contract into another.
 - [optimization-cron-builder](optimization-cron-builder/SKILL.md) — design-guided optimization cron
 - [migration-cron-builder](migration-cron-builder/SKILL.md) — generalized source-to-target migration cron
 - [SKILL.md](SKILL.md) — original PCTF debating specification
+- [docs/agent-platforms.md](docs/agent-platforms.md) — Codex / Claude Code compatibility contract
 - [config.yaml](config.yaml) — root configuration
 
 ## The Name

@@ -71,7 +71,9 @@ Do not silently commit these unless the repo's policy explicitly requires it.
 - Release claims for still-open items when the assigned worker process is no longer alive.
 - Keep claims for still-open items only when the assigned worker process is live.
 - Write released claims to an audit ledger with release time, original claim time, item id, worker id, and title.
-- Use self-match-safe process patterns such as `[c]odex exec...`; do not let the guard's own `pgrep` command count as a worker.
+- Use self-match-safe process patterns for the selected runner, such as
+  `[c]odex exec...` or `[c]laude -p...`; do not let the guard's own `pgrep`
+  command count as a worker.
 - Prune stale claims before sync and after sync so a dirty checkout cannot pin stale reservations indefinitely.
 
 ## First-open selection rule
@@ -112,7 +114,7 @@ When the blueprint is fully checked and validation passes:
 - require hard cleanup signals before cleanup:
   - authoritative blueprint unchecked count is zero
   - latest todo snapshot shows `Unfinished = 0`
-  - no active `codex` execution in automation repos
+  - no active selected agent-runner execution in automation repos
   - no pending checkpoint artifacts remain
 - run the cleanup script
 - verify cron line was actually removed from crontab
@@ -129,7 +131,11 @@ When the blueprint is fully checked and validation passes:
 ## Split-lane DAG concurrency rule
 
 When execution uses tmux workers:
-- newly launched `tmux` codex workers must honor explicit `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, and `CODEX_SERVICE_TIER`; if service tier is unset, the guard may use a repo default but must print it
+- newly launched `tmux` agent workers must honor explicit `B3EHIVE_AGENT_PLATFORM`,
+  `B3EHIVE_AGENT_RUNNER`, `CODEX_MODEL`, `CODEX_REASONING_EFFORT`,
+  `CODEX_SERVICE_TIER`, `CLAUDE_MODEL`, `CLAUDE_EFFORT`, and
+  `CLAUDE_PERMISSION_MODE`; if service tier or permission mode is unset, the
+  guard may use a repo default but must print it
 - worker count must be computed from `user_max_concurrency - live_worker_count`, capped by unclaimed open nodes in the ordered DAG claim frontier
 - do not reduce worker count because dependencies are unfinished, path scopes overlap, or the main session has integration claims
 - only one integration owner may close blueprint/todo checkmarks after combined validation and dependency checks
@@ -143,7 +149,8 @@ When execution uses tmux workers:
 
 - `VALIDATE_ONLY=1` is a dry gate only.
 - A validate-only run may verify configuration, sync state, DAG consistency, claim ledger shape, disk/log budgets, and todo generation.
-- A validate-only run must exit before creating claims, launching `tmux`, or starting `codex exec`.
+- A validate-only run must exit before creating claims, launching `tmux`, or
+  starting the selected agent runner.
 - If the operator's goal is to fill worker lanes, the guard must run without `VALIDATE_ONLY=1`.
 
 ## Small-diff integration batch rule

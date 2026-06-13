@@ -1,8 +1,20 @@
 b3ehive:
+  platforms:
+    codex:
+      install_root: ~/.codex/skills
+      runner_template: 'codex exec --cd "{workspace}" --model "${CODEX_MODEL:-gpt-5.3-codex}" -c model_reasoning_effort="${CODEX_REASONING_EFFORT:-xhigh}" < "{prompt_file}" > "{output_file}"'
+    claude:
+      install_root: ~/.claude/skills
+      runner_template: 'claude -p --model "${CLAUDE_MODEL:-sonnet}" --effort "${CLAUDE_EFFORT:-max}" --permission-mode "${CLAUDE_PERMISSION_MODE:-auto}" --add-dir "{workspace}" < "{prompt_file}" > "{output_file}"'
   agents:
     count: 3
-    model: openai-proxy/gpt-5.3-codex
-    thinking: high
+    platform: auto
+    model:
+      codex: openai-proxy/gpt-5.3-codex
+      claude: sonnet
+    thinking:
+      codex: xhigh
+      claude: max
   evaluation:
     dimensions:
       simplicity: 20

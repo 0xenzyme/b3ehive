@@ -7,7 +7,7 @@ description: Build or repair a code-research cron for a repository using a gener
 
 ## Overview
 
-Build a code-only research pipeline that continuously reads source files, writes research docs into `Docs/researches/`, tracks progress in a generated checklist, rotates `kimi` keys, checkpoints progress, and removes its own cron entries when research is complete.
+Build a code-only research pipeline that continuously reads source files, writes research docs into `Docs/researches/`, tracks progress in a generated checklist, rotates provider keys when configured, checkpoints progress, and removes its own cron entries when research is complete.
 
 Final research artifacts must be one-to-one with the original researched files and must preserve the source tree shape under `Docs/researches/`: every source file in scope must have exactly one per-file research document at `Docs/researches/<source_path>_research.md`, even if files were grouped together for efficient worker prompts. Every represented source folder must have exactly one folder report at `Docs/researches/<folder_path>/current_folder_research.md`; the repository root report is `Docs/researches/current_folder_research.md`.
 
@@ -168,7 +168,7 @@ Requirements:
   - default `LOG_RETENTION_DAYS=3`; delete old `.log`, `.out`, and `.err` files under the cron root
   - default `WORKSPACE_TTL_HOURS=48`; remove only stale, non-live `.cron/automation_repo*` or `.cron/**/workspaces/slot*` directories
   - default `MAX_CRON_ROOT_GB=30`; if the cron root remains above this after cleanup, refuse new worker spawn
-  - never delete a workspace whose path is referenced by a live `codex exec`, `tmux`, shell, or lock/pid file
+  - never delete a workspace whose path is referenced by a live selected agent-runner process, `tmux`, shell, or lock/pid file
   - write cleanup decisions to a bounded janitor log, not to an unbounded cron log
 - Support `tmux` worker fan-out for parallel research.
 - Claim work under a lock so workers do not duplicate batches.
@@ -182,7 +182,7 @@ Requirements:
   - daily todos must show both the researcher claim frontier and the curator frontier, with counts for live, finished-awaiting-curation, ok, failed, and unclaimed
   - heavy curator scans such as per-file split validation, chunk merge checks, and folder-index synthesis should run after worker refill, incrementally, or behind an explicit refresh flag
 - When the requested concurrency is high, select claims under one lock but prepare worker prompts/workspaces with bounded parallelism so clone, sync, and startup overhead do not serialize the whole run.
-- Rotate `kimi` keys on auth/quota/rate-limit failures.
+- Rotate provider keys on auth/quota/rate-limit failures when the selected runner uses key pools.
 - Distinguish between `completed`, `idle_waiting`, `exec_failed`, `exec_timeout`, and `running_exec`.
 - Reconcile checklist marks from existing non-empty research docs.
 - Reconcile `[_]` worker marks separately from `[x]` master-accepted marks.
@@ -208,6 +208,35 @@ Minimum behavior:
 - verify live worker paths with self-match-safe process checks before deleting any automation repo or workspace
 - return a distinct nonzero code for "budget exceeded" so the guard can exit without marking research complete
 - keep all defaults overrideable via environment variables
+
+## Codex / Claude Code Compatibility
+
+Generated research cron code must use a configurable agent runner instead of
+hard-coding one CLI.
+
+Default platform selection:
+- `B3EHIVE_AGENT_PLATFORM=codex` uses `codex exec`.
+- `B3EHIVE_AGENT_PLATFORM=claude` uses `claude -p`.
+- `B3EHIVE_AGENT_PLATFORM=auto` may choose the first installed CLI from Codex,
+  then Claude Code.
+
+Default command templates:
+
+```bash
+# Codex
+codex exec --cd "$WORKER_REPO" --model "${CODEX_MODEL:-gpt-5.3-codex}" \
+  -c model_reasoning_effort="${CODEX_REASONING_EFFORT:-xhigh}" \
+  < "$PROMPT_FILE" > "$OUTPUT_FILE"
+
+# Claude Code
+claude -p --model "${CLAUDE_MODEL:-sonnet}" --effort "${CLAUDE_EFFORT:-max}" \
+  --permission-mode "${CLAUDE_PERMISSION_MODE:-auto}" \
+  --add-dir "$WORKER_REPO" < "$PROMPT_FILE" > "$OUTPUT_FILE"
+```
+
+If `B3EHIVE_AGENT_RUNNER` is set, generated guards must treat it as the
+authoritative command template and print the resolved runner in validate-only
+output.
 
 ### Cleanup Script
 
@@ -253,11 +282,16 @@ Always perform these checks before declaring the cron ready:
 
 ### Key Pool vs Concurrency
 
-When scaling research concurrency, treat key-pool size as a first-class capacity limit.
+When scaling research concurrency, treat provider key-pool size as a first-class
+capacity limit for runners that use API keys. If the selected runner uses
+session/OAuth auth instead of key pools, record that key-pool sharding is not
+applicable and skip these limits.
 
 Required practice:
 - Before increasing `MAX_PARALLEL_RESEARCH`, proactively gather keys from all approved sources and deduplicate them.
-- Recommended key sources: `KIMI_KEYS_FILE`, `KIMI_KEYS_EXTRA_FILES`, `KIMI_API_KEYS`, `KIMI_API_KEY`.
+- Recommended key sources are provider-specific environment variables or key
+  files, for example `B3EHIVE_AGENT_KEYS_FILE`, `B3EHIVE_AGENT_KEYS_EXTRA_FILES`,
+  and `B3EHIVE_AGENT_API_KEYS`.
 - Target `unique_key_count >= MAX_PARALLEL_RESEARCH` whenever possible.
 - If keys are fewer than workers, keep worker-slot key sharding enabled and log an explicit warning with both counts.
 - If sustained auth/quota/rate-limit failures appear, first expand key pool, then re-balance worker-to-key spread; do not only increase retries.

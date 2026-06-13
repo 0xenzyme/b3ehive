@@ -189,6 +189,25 @@ Validation examples:
 - hook shell: shebang + `set -euo pipefail` + `bash -n`
 - settings JSON: valid JSON with Codex runtime fields
 
+### Codex -> Claude Code Assets
+
+Use this preset when the source scope is Codex-native:
+
+- `.codex/skills/*/SKILL.md` -> `Docs/migrated/claude/skills/*/SKILL.md`
+- Codex skill directories without a `.codex/` wrapper -> `Docs/migrated/claude/skills/*/SKILL.md`
+- `agents/openai.yaml` -> `Docs/migrated/claude/agents/*.md` or generated Claude settings notes
+- Codex runner docs/scripts -> `Docs/migrated/claude/tools/**`
+- Codex-only model/config references -> Claude Code model/effort/permission equivalents
+
+Validation examples:
+
+- skill markdown: Claude Code-compatible `SKILL.md` with `name` and
+  `description` frontmatter
+- agent markdown: frontmatter plus explicit source traceability
+- shell helpers: shebang + `set -euo pipefail` + `bash -n`
+- settings JSON: valid JSON and no Codex-only runtime key presented as a Claude
+  Code setting
+
 ### Documentation Language Migration
 
 Use this preset when the source and target are natural languages.
@@ -250,8 +269,12 @@ Do not mark a migration item complete for:
 ## Runtime Rules
 
 - Default concurrency: `5` when shards have disjoint target paths.
-- Default model: `gpt-5.4`.
-- Default reasoning effort: `xhigh`.
+- Default Codex model: `gpt-5.4`.
+- Default Codex reasoning effort: `xhigh`.
+- Default Claude Code model: `sonnet`.
+- Default Claude Code effort: `max`.
+- Support `B3EHIVE_AGENT_PLATFORM=codex|claude|auto` and
+  `B3EHIVE_AGENT_RUNNER` for custom command templates.
 - Scheduler should only spawn one worker per slot when its pid is not alive.
 - Maintain separate transformer and integrator queues:
   - the transformer claim ledger records source artifact, target artifact, validator, worker slot, workspace, state, claim time, and path scope

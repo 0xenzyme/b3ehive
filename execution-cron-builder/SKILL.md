@@ -1,13 +1,13 @@
 ---
 name: execution-cron-builder
-description: Build or repair a blueprint-driven execution cron for a repository using one authoritative blueprint, a daily todo snapshot, an isolated automation clone, bounded codex exec batches, validation gates, checkpoint commits, and cleanup-on-complete. Use when a repo should continuously implement a blueprint, when an execution cron needs to be added to a new repository, or when an existing blueprint-execution cron needs boundary/gate fixes.
+description: Build or repair a blueprint-driven execution cron for a repository using one authoritative blueprint, a daily todo snapshot, an isolated automation clone, bounded agent-runner batches for Codex or Claude Code, validation gates, checkpoint commits, and cleanup-on-complete. Use when a repo should continuously implement a blueprint, when an execution cron needs to be added to a new repository, or when an existing blueprint-execution cron needs boundary/gate fixes.
 ---
 
 # Execution Cron Builder
 
 ## Overview
 
-Build a repository-local execution cron that wakes on a schedule, clones or syncs isolated automation repos, reads exactly one blueprint, keeps a dependency DAG for open checklist items, runs bounded `codex exec` batches, validates real implementation, checkpoints commits, and removes its own cron when the blueprint is truly complete.
+Build a repository-local execution cron that wakes on a schedule, clones or syncs isolated automation repos, reads exactly one blueprint, keeps a dependency DAG for open checklist items, runs bounded agent-runner batches, validates real implementation, checkpoints commits, and removes its own cron when the blueprint is truly complete.
 Default gate posture is strict: no mock completion, and no upper-layer completion while finer layers remain open.
 Default commit posture is code-first: never commit cron/private artifacts, never commit tests from automation batches, and keep docs commits less than or equal to code commits per batch.
 Default orchestration posture is split-lane DAG aware: tmux workers claim implementation work in DAG/topological order up to the user-requested max concurrency, while the main session integrates, validates, and closes work strictly in DAG dependency order with conflict and completion gates enforced.
@@ -96,13 +96,13 @@ Required behavior:
 11. Generate todos with the current dependency DAG for all unfinished checklist items.
    The todo must list item ids, dependency ids, worker-claim order state, integration-ready/blocked state, claimed worker/session, owned paths, and the main-session integration frontier.
    The DAG must be acyclic; cycle detection is a hard todo-generation failure.
-12. When launching new `tmux` codex workers, use user-saturated ordered DAG concurrency instead of ready-frontier lane limiting.
+12. When launching new `tmux` agent workers, use user-saturated ordered DAG concurrency instead of ready-frontier lane limiting.
    `worker_count = user_max_concurrency - live_worker_count`, capped by the count of unclaimed open DAG nodes available in topological order.
    Workers must claim nodes from the earliest still-open layer/cluster in stable DAG/topological order, but worker spawn is not blocked by unfinished dependencies or overlapping path families. Dependent or path-overlapping worker results are provisional until the main session integrates them in DAG dependency order.
 13. Maintain a claim ledger for tmux workers.
    The ledger must record item id, original blueprint id, dependency ids, session name, slot, workspace path, status, claim time, and owned path scopes. Todo generation must display each open item's claim state as `live:<session>`, `finished:<session>`, or `unclaimed`, and must include the claim ledger path.
-14. Every newly launched `tmux` codex worker must use the user-requested/latest high-capability model, reasoning effort, and service tier.
-   Honor explicit environment/config values such as `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, and `CODEX_SERVICE_TIER`; do not silently replace a requested service tier. If no service tier is specified, the cron may choose its repo default and must print that value in the guard output.
+14. Every newly launched `tmux` agent worker must use the selected platform's requested/latest high-capability model and effort settings.
+   Honor explicit environment/config values such as `B3EHIVE_AGENT_PLATFORM`, `B3EHIVE_AGENT_RUNNER`, `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, `CODEX_SERVICE_TIER`, `CLAUDE_MODEL`, `CLAUDE_EFFORT`, and `CLAUDE_PERMISSION_MODE`; do not silently replace a requested service tier or permission mode. If no service tier or permission mode is specified, the cron may choose its repo default and must print that value in the guard output.
 15. Add a main-session integration queue for landed worker outputs.
    The queue must scan claimed worker workspaces, report changed files and diff byte counts, detect path conflicts, and classify outputs whose combined diff is <=256KiB as small-diff batch candidates.
 16. Keep worker claim and master integration as separate cursors.
@@ -124,7 +124,7 @@ Required behavior:
    - authoritative blueprint has zero `[ ]` items
    - authoritative blueprint has zero `[_]` items
    - latest todo snapshot shows `Unfinished = 0`
-   - no running `codex` process in automation repos
+   - no running selected agent-runner process in automation repos
    - no pending checkpoint artifact remains
    - cleanup script succeeds and cron entry is actually removed
 22. Enforce commit-surface policy at checkpoint time:
@@ -160,6 +160,35 @@ Required behavior:
    - if tracked dirty files exist while workers are active, block protectively instead of stashing their live work
 28. Add a disk/log budget guard before installing or repairing cron.
    The guard must run at the start of every scheduler tick, before spawning workers, and must block new workers when budgets are exceeded.
+
+## Codex / Claude Code Compatibility
+
+Generated execution cron code must support both Codex and Claude Code through a
+single agent-runner abstraction.
+
+Default platform selection:
+- `B3EHIVE_AGENT_PLATFORM=codex` uses `codex exec`.
+- `B3EHIVE_AGENT_PLATFORM=claude` uses `claude -p`.
+- `B3EHIVE_AGENT_PLATFORM=auto` may choose Codex when `codex` is available,
+  otherwise Claude Code when `claude` is available.
+
+Default command templates:
+
+```bash
+# Codex
+codex exec --cd "$WORKER_REPO" --model "${CODEX_MODEL:-gpt-5.3-codex}" \
+  -c model_reasoning_effort="${CODEX_REASONING_EFFORT:-xhigh}" \
+  < "$PROMPT_FILE" > "$OUTPUT_FILE"
+
+# Claude Code
+claude -p --model "${CLAUDE_MODEL:-sonnet}" --effort "${CLAUDE_EFFORT:-max}" \
+  --permission-mode "${CLAUDE_PERMISSION_MODE:-auto}" \
+  --add-dir "$WORKER_REPO" < "$PROMPT_FILE" > "$OUTPUT_FILE"
+```
+
+If `B3EHIVE_AGENT_RUNNER` is set, it is the authoritative template. Validate-only
+output must print the resolved platform, model/effort settings, permission or
+service-tier setting, and command template without leaking secrets.
 
 ## Required Components
 
@@ -202,7 +231,7 @@ Requirements:
 - Before each worker batch: `fetch + pull --ff-only` or `fetch + rebase` against the authoritative branch.
 - After each worker batch: `rebase/resolve within owned scope -> push`.
 - Local authoritative repo must also stay synced (`fetch + merge --ff-only`) so "remote updated but local stale" is impossible by design.
-- Newly launched `tmux` codex workers must honor the requested service tier in their `codex exec` configuration; if unset, use and print the repo default.
+- Newly launched `tmux` agent workers must honor the selected platform configuration; for Codex, preserve the requested service tier in `codex exec`; for Claude Code, preserve the requested `--permission-mode`; if unset, use and print the repo default.
 - Worker count is saturated from the todo DAG order: never exceed the user's max concurrency, but do not reduce worker count merely because dependencies are unfinished or owned paths overlap.
 - The main session is allowed to claim work directly, but should preferentially own integration, validation, dependency-gated closure, merge, and conflict-unblocking tasks when worker branches/worktrees land.
 - Workers must not mark checklist items `[x]`. Their terminal success state is `[_]` plus evidence.
@@ -224,9 +253,9 @@ Requirements:
   - default `LOG_RETENTION_DAYS=3`; delete old `.log`, `.out`, and `.err` files under the cron root
   - default `WORKSPACE_TTL_HOURS=48`; remove only stale, non-live `.cron/automation_repo*` or `.cron/**/workspaces/slot*` directories
   - default `MAX_CRON_ROOT_GB=30`; if the cron root remains above this after cleanup, refuse new worker spawn
-  - never delete a workspace whose path is referenced by a live `codex exec`, `tmux`, shell, or lock/pid file
+  - never delete a workspace whose path is referenced by a live selected agent-runner process, `tmux`, shell, or lock/pid file
   - write cleanup decisions to a bounded janitor log, not to an unbounded cron log
-- Skip overlap if another `codex exec` is already running in the same worker repo.
+- Skip overlap if another selected agent runner is already running in the same worker repo.
 - Enforce a single blueprint source.
 - Enforce one authoritative execution checklist inside that blueprint.
 - Enforce the dual-cursor checkbox protocol: `[ ]` for not done, `[_]` for worker self-tested, `[x]` for master accepted.
@@ -316,7 +345,7 @@ Requirements:
 
 ### Cron Space Guard
 
-Every generated execution cron must include a repo-local janitor script, for example `.cron/scripts/cron_space_guard.sh`, and call it from the top of the scheduler before any `tmux` or `codex exec` launch.
+Every generated execution cron must include a repo-local janitor script, for example `.cron/scripts/cron_space_guard.sh`, and call it from the top of the scheduler before any `tmux` or agent-runner launch.
 
 Minimum behavior:
 - determine the cron root from the script path, not from the caller's current directory
@@ -355,7 +384,7 @@ Bootstrap and reporting rule:
 
 Cleanup hard-gate rule:
 - Cron cleanup must not be triggered by blueprint-only signal.
-- Require at least these signals at the same tick: blueprint `[ ]` count=0 + blueprint `[_]` count=0 + latest todo `Unfinished=0` + no active automation `codex` run + no pending checkpoint files.
+- Require at least these signals at the same tick: blueprint `[ ]` count=0 + blueprint `[_]` count=0 + latest todo `Unfinished=0` + no active automation agent-runner process + no pending checkpoint files.
 - Set final state to `completed` only after cleanup script succeeds and crontab no longer contains the target guard line.
 
 Do not mark items done for:

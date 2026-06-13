@@ -14,7 +14,7 @@
    - creates parallel `tmux` workers
    - claims DIR/FILE work under lock files
    - runs the cron space guard before worker spawn
-   - calls `kimi --print --yolo`
+   - calls the selected Codex or Claude Code agent runner
    - verifies output documents are non-empty
    - reconciles checklist marks from output docs
    - checkpoints progress locally
@@ -64,7 +64,7 @@ Exclude by default:
 - `.cron/research_guard.log`
 - `.cron/research_guard.block_count`
 - `.cron/research_claims/*.claim`
-- `.cron/research_guard.kimi_key_index`
+- `.cron/research_guard.provider_key_index` when provider key pools are used
 - `.cron/research_guard.progress`
 - `.cron/scripts/cron_space_guard.sh`
 
@@ -75,7 +75,8 @@ Every research guard tick must run a bounded cleanup helper before launching or 
 - Use environment-overridable defaults: `MIN_FREE_GB=30`, `DANGER_FREE_GB=15`, `MAX_LOG_MB=20`, `MAX_KEEPALIVE_MB=5`, `LOG_RETENTION_DAYS=3`, `WORKSPACE_TTL_HOURS=48`, `MAX_CRON_ROOT_GB=30`.
 - Trim active logs by keeping the tail with `tail -c` and atomic `mv`; avoid unbounded guard or keepalive logs.
 - Delete `.log`, `.out`, and `.err` files older than 3 days under the cron root.
-- Remove only stale workspaces whose paths are not referenced by live `kimi`, `codex`, `tmux`, shell, pid, or lock state.
+- Remove only stale workspaces whose paths are not referenced by the selected
+  live agent runner, `tmux`, shell, pid, or lock state.
 - If free space or cron-root budget remains unsafe after cleanup, write `blocked_disk_space` and skip worker spawn.
 
 ## Typical cron shape
@@ -85,7 +86,7 @@ Every research guard tick must run a bounded cleanup helper before launching or 
 
 ## Common failure modes
 
-- `kimi` quota/auth failures causing `exec_failed`
+- provider quota/auth failures causing `exec_failed`
 - duplicate work due to missing claim locks
 - empty output docs accepted as success
 - checklist corruption from non-atomic writes

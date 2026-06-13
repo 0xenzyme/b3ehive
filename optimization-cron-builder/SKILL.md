@@ -1,13 +1,13 @@
 ---
 name: optimization-cron-builder
-description: Build or repair a design-idea-guided optimization cron for a repository. Use when the user provides a design philosophy and wants a Stage_*_AR_Blueprint.md with <=100 checklist items, per-item SOTA optimization research docs under Docs/researches/Stage_*_AR/, parallel tmux workers, codex exec batches, and cleanup-on-complete.
+description: Build or repair a design-idea-guided optimization cron for a repository. Use when the user provides a design philosophy and wants a Stage_*_AR_Blueprint.md with <=100 checklist items, per-item SOTA optimization research docs under Docs/researches/Stage_*_AR/, parallel tmux workers, Codex or Claude Code agent-runner batches, and cleanup-on-complete.
 ---
 
 # Optimization Cron Builder
 
 ## Overview
 
-Build a repository-local optimization pipeline that does not implement product code directly. Instead, it continuously scans one stage blueprint through a user-supplied design philosophy, derives a bounded AR checklist, writes per-item optimization research docs, tracks progress, runs parallel `tmux` workers with `codex exec`, and removes its own cron setup when the AR blueprint is complete.
+Build a repository-local optimization pipeline that does not implement product code directly. Instead, it continuously scans one stage blueprint through a user-supplied design philosophy, derives a bounded AR checklist, writes per-item optimization research docs, tracks progress, runs parallel `tmux` workers with a selected agent runner, and removes its own cron setup when the AR blueprint is complete.
 
 `AR` means `Architecture Refinement` here, but the pattern works for any stage-specific optimization blueprint.
 
@@ -73,7 +73,7 @@ Requirements:
   - default `LOG_RETENTION_DAYS=3`; delete old `.log`, `.out`, and `.err` files under the cron root
   - default `WORKSPACE_TTL_HOURS=48`; remove only stale, non-live `.cron/automation_repo*` or `.cron/**/workspaces/slot*` directories
   - default `MAX_CRON_ROOT_GB=30`; if the cron root remains above this after cleanup, refuse new worker spawn
-  - never delete a workspace whose path is referenced by a live `codex exec`, `tmux`, shell, or lock/pid file
+  - never delete a workspace whose path is referenced by a live selected agent-runner process, `tmux`, shell, or lock/pid file
   - write cleanup decisions to a bounded janitor log, not to an unbounded cron log
 - Support parallel `tmux` workers.
 - Assign workers by section ownership, not overlapping write scopes.
@@ -84,7 +84,7 @@ Requirements:
 
 ### Cron Space Guard
 
-Every generated optimization cron must include a repo-local janitor script, for example `.cron/scripts/cron_space_guard.sh`, and call it from the top of the optimization guard before any `tmux` or `codex exec` launch.
+Every generated optimization cron must include a repo-local janitor script, for example `.cron/scripts/cron_space_guard.sh`, and call it from the top of the optimization guard before any `tmux` or agent-runner launch.
 
 Minimum behavior:
 - determine the cron root from the script path, not from the caller's current directory
@@ -102,6 +102,34 @@ Requirements:
 - Stop guard and worker `tmux` sessions.
 - Remove repo-local `.cron/` and `.ops/` artifacts created only for the optimization run when cleanup-on-complete is enabled.
 - Keep the authoritative blueprint and completed research docs.
+
+## Codex / Claude Code Compatibility
+
+Generated optimization cron code must support both Codex and Claude Code via a
+single agent-runner abstraction.
+
+Default platform selection:
+- `B3EHIVE_AGENT_PLATFORM=codex` uses `codex exec`.
+- `B3EHIVE_AGENT_PLATFORM=claude` uses `claude -p`.
+- `B3EHIVE_AGENT_PLATFORM=auto` may choose the first installed CLI from Codex,
+  then Claude Code.
+
+Default command templates:
+
+```bash
+# Codex
+codex exec --cd "$WORKER_REPO" --model "${CODEX_MODEL:-gpt-5.3-codex}" \
+  -c model_reasoning_effort="${CODEX_REASONING_EFFORT:-xhigh}" \
+  < "$PROMPT_FILE" > "$OUTPUT_FILE"
+
+# Claude Code
+claude -p --model "${CLAUDE_MODEL:-sonnet}" --effort "${CLAUDE_EFFORT:-max}" \
+  --permission-mode "${CLAUDE_PERMISSION_MODE:-auto}" \
+  --add-dir "$WORKER_REPO" < "$PROMPT_FILE" > "$OUTPUT_FILE"
+```
+
+Validate-only output must print the selected platform and resolved runner. If
+`B3EHIVE_AGENT_RUNNER` is set, use it instead of the default template.
 
 ## Batch Rules
 

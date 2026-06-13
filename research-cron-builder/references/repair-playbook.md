@@ -24,4 +24,5 @@ Record:
 - unusable keys
 - first usable index
 
-Then seed `.cron/research_guard.kimi_key_index` to the first usable slot.
+Then seed `.cron/research_guard.provider_key_index` or the selected provider's
+equivalent key cursor to the first usable slot.

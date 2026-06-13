@@ -306,8 +306,13 @@ b3ehive:
   # Agent configuration
   agents:
     count: 3
-    model: openai-proxy/gpt-5.3-codex
-    thinking: high
+    platform: auto  # codex / claude / auto
+    model:
+      codex: openai-proxy/gpt-5.3-codex
+      claude: sonnet
+    thinking:
+      codex: xhigh
+      claude: max
     focuses:
       - simplicity
       - speed
@@ -347,6 +352,9 @@ b3ehive "Implement quicksort" --lang python --max-lines 50
 
 # Using OpenClaw CLI
 openclaw skills run b3ehive --task "Your task"
+
+# Install portable skills for Codex and Claude Code
+scripts/install_skills.sh --target both --scope user
 ```
 
 ---

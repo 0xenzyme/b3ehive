@@ -15,7 +15,7 @@ Example philosophies:
 1. Read one authoritative stage blueprint.
 2. Derive one bounded AR blueprint with `<=100` items.
 3. Partition the AR blueprint into section-owned worker lanes.
-4. Run parallel `tmux` workers with `codex exec`.
+4. Run parallel `tmux` workers with the selected Codex or Claude Code agent runner.
 5. Require one focused research doc per checklist item.
 6. Merge section snapshots back into the main blueprint.
 7. Run a cron space guard before worker spawn.
@@ -48,7 +48,8 @@ Every optimization guard tick must run a bounded cleanup helper before launching
 - Use environment-overridable defaults: `MIN_FREE_GB=30`, `DANGER_FREE_GB=15`, `MAX_LOG_MB=20`, `MAX_KEEPALIVE_MB=5`, `LOG_RETENTION_DAYS=3`, `WORKSPACE_TTL_HOURS=48`, `MAX_CRON_ROOT_GB=30`.
 - Trim active logs by keeping the tail with `tail -c` and atomic `mv`; avoid unbounded guard or keepalive logs.
 - Delete `.log`, `.out`, and `.err` files older than 3 days under the cron root.
-- Remove only stale workspaces whose paths are not referenced by live `codex`, `tmux`, shell, pid, or lock state.
+- Remove only stale workspaces whose paths are not referenced by the selected
+  live agent runner, `tmux`, shell, pid, or lock state.
 - If cleanup cannot bring free space and cron-root size back under budget, write `blocked_disk_space` and skip worker spawn.
 
 ## Common failure modes
