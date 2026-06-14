@@ -44,10 +44,10 @@ for required in docs/agent-platforms.md scripts/install_skills.sh; do
   fi
 done
 
-"${ROOT_DIR}/scripts/install_skills.sh" --target both --scope project --project-dir /tmp/b3ehive-skill-check --dry-run >/dev/null
+"${ROOT_DIR}/scripts/install_skills.sh" --target all --scope project --project-dir /tmp/b3ehive-skill-check --dry-run >/dev/null
 
 if [[ "$errors" -gt 0 ]]; then
   exit 1
 fi
 
-echo "Agent platform validation passed for Codex and Claude Code."
+echo "Agent platform validation passed for Codex, Claude Code, opencode, OpenClaw, and Hermes."

@@ -6,15 +6,30 @@ b3ehive:
     claude:
       install_root: ~/.claude/skills
       runner_template: 'claude -p --model "${CLAUDE_MODEL:-sonnet}" --effort "${CLAUDE_EFFORT:-max}" --permission-mode "${CLAUDE_PERMISSION_MODE:-auto}" --add-dir "{workspace}" < "{prompt_file}" > "{output_file}"'
+    opencode:
+      install_root: ~/.config/opencode/skills
+      runner_template: 'opencode run --dir "{workspace}" ${OPENCODE_MODEL:+--model "$OPENCODE_MODEL"} ${OPENCODE_VARIANT:+--variant "$OPENCODE_VARIANT"} ${OPENCODE_AGENT:+--agent "$OPENCODE_AGENT"} < "{prompt_file}" > "{output_file}"'
+    openclaw:
+      install_root: ~/.openclaw/skills
+      runner_template: 'openclaw ${OPENCLAW_PROFILE:+--profile "$OPENCLAW_PROFILE"} agent --local ${OPENCLAW_AGENT:+--agent "$OPENCLAW_AGENT"} ${OPENCLAW_THINKING:+--thinking "$OPENCLAW_THINKING"} --message "$(cat "{prompt_file}")" > "{output_file}"'
+    hermes:
+      install_root: ~/.hermes/skills
+      runner_template: 'hermes chat --toolsets "${HERMES_TOOLSETS:-skills,terminal}" ${HERMES_MODEL:+--model "$HERMES_MODEL"} ${HERMES_SKILLS:+-s "$HERMES_SKILLS"} -q "$(cat "{prompt_file}")" > "{output_file}"'
   agents:
     count: 3
     platform: auto
     model:
       codex: openai-proxy/gpt-5.3-codex
       claude: sonnet
+      opencode: null
+      openclaw: null
+      hermes: null
     thinking:
       codex: xhigh
       claude: max
+      opencode: null
+      openclaw: high
+      hermes: null
   evaluation:
     dimensions:
       simplicity: 20

@@ -134,8 +134,11 @@ When execution uses tmux workers:
 - newly launched `tmux` agent workers must honor explicit `B3EHIVE_AGENT_PLATFORM`,
   `B3EHIVE_AGENT_RUNNER`, `CODEX_MODEL`, `CODEX_REASONING_EFFORT`,
   `CODEX_SERVICE_TIER`, `CLAUDE_MODEL`, `CLAUDE_EFFORT`, and
-  `CLAUDE_PERMISSION_MODE`; if service tier or permission mode is unset, the
-  guard may use a repo default but must print it
+  `CLAUDE_PERMISSION_MODE`, `OPENCODE_MODEL`, `OPENCODE_VARIANT`, and
+  `OPENCODE_AGENT`, `OPENCLAW_PROFILE`, `OPENCLAW_AGENT`, `OPENCLAW_THINKING`,
+  `HERMES_MODEL`, `HERMES_TOOLSETS`, and `HERMES_SKILLS`; if service tier,
+  permission mode, variant, profile, agent, toolsets, or preloaded skill list is
+  unset, the guard may use a repo default but must print it
 - worker count must be computed from `user_max_concurrency - live_worker_count`, capped by unclaimed open nodes in the ordered DAG claim frontier
 - do not reduce worker count because dependencies are unfinished, path scopes overlap, or the main session has integration claims
 - only one integration owner may close blueprint/todo checkmarks after combined validation and dependency checks

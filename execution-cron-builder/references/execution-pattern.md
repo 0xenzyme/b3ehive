@@ -20,13 +20,18 @@
 5. Generate a daily todo from that authoritative checklist section, including the current dependency DAG for unfinished items.
 6. Use an isolated automation repo when the main repo may be dirty.
 7. Run the selected agent runner in bounded clusters.
-   Codex workers use `codex exec`; Claude Code workers use `claude -p`.
+   Codex workers use `codex exec`; Claude Code workers use `claude -p`;
+   opencode workers use `opencode run`; OpenClaw workers use `openclaw agent`;
+   Hermes workers use `hermes chat`.
    New `tmux` workers must honor explicit `B3EHIVE_AGENT_PLATFORM`,
    `B3EHIVE_AGENT_RUNNER`, `CODEX_MODEL`, `CODEX_REASONING_EFFORT`,
-   `CODEX_SERVICE_TIER`, `CLAUDE_MODEL`, `CLAUDE_EFFORT`, and
-   `CLAUDE_PERMISSION_MODE` values. If a service tier or permission mode is not
-   specified, print and use the repo default instead of silently changing the
-   operator's requested setting.
+   `CODEX_SERVICE_TIER`, `CLAUDE_MODEL`, `CLAUDE_EFFORT`,
+   `CLAUDE_PERMISSION_MODE`, `OPENCODE_MODEL`, `OPENCODE_VARIANT`,
+   `OPENCODE_AGENT`, `OPENCLAW_PROFILE`, `OPENCLAW_AGENT`, `OPENCLAW_THINKING`,
+   `HERMES_MODEL`, `HERMES_TOOLSETS`, and `HERMES_SKILLS` values. If a service
+   tier, permission mode, variant, profile, agent, toolset, or preloaded skill
+   list is not specified, print and use the repo default instead of silently
+   changing the operator's requested setting.
 8. Enforce strict layer gate: only work on the finest still-open layer; do not close upper layers while lower layers are open.
 9. Validate honestly.
 10. Commit/push only real work.
@@ -98,8 +103,8 @@ Use this when one worker is leaving material throughput on the table and the use
 - Force explicit ownership from DAG nodes and path scopes.
 - The main session owns dependency-gated integration closure, validation, and merge/conflict repair unless a human assigns that role elsewhere.
 - Every newly launched `tmux` worker command must honor the selected platform's
-  requested service tier or permission mode; if none is set, use and print the
-  repo default.
+  requested service tier, permission mode, variant, profile, agent, toolsets, or
+  preloaded skill list; if none is set, use and print the repo default.
 - Require every worker batch to start with `fetch + pull --ff-only` or `fetch + rebase`.
 - Require every worker push to rebase and resolve only inside that worker's owned paths when possible; if a dependency or path conflict requires cross-node judgment, leave it for the main-session integration lane.
 - Keep blueprint/todo mutation centralized to one integration lane after honest validation on the combined tree and after DAG dependencies are satisfied.

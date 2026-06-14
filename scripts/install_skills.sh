@@ -13,24 +13,30 @@ SKILLS=(
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/install_skills.sh [--target codex|claude|both] [--scope user|project] [--project-dir PATH] [--dry-run]
+Usage: scripts/install_skills.sh [--target codex|claude|opencode|openclaw|hermes|both|all] [--scope user|project] [--project-dir PATH] [--dry-run]
 
-Installs b3ehive's five portable SKILL.md directories for Codex, Claude Code, or both.
+Installs b3ehive's five portable SKILL.md directories for Codex, Claude Code, opencode, OpenClaw, Hermes, or all supported targets.
 
 Defaults:
-  --target both
+  --target all
   --scope user
   --project-dir .
 
 Install roots:
   Codex user:        ~/.codex/skills
   Claude Code user:  ~/.claude/skills
+  opencode user:     ~/.config/opencode/skills
+  OpenClaw user:      ~/.openclaw/skills
+  Hermes user:        ~/.hermes/skills
   Codex project:     <project-dir>/.codex/skills
   Claude project:    <project-dir>/.claude/skills
+  opencode project:  <project-dir>/.opencode/skills
+  OpenClaw project:   <project-dir>/skills
+  Hermes project:     <project-dir>/skills
 USAGE
 }
 
-target="both"
+target="all"
 scope="user"
 project_dir="."
 dry_run=0
@@ -66,9 +72,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$target" in
-  codex|claude|both) ;;
+  codex|claude|opencode|openclaw|hermes|both|all) ;;
   *)
-    echo "--target must be codex, claude, or both" >&2
+    echo "--target must be codex, claude, opencode, openclaw, hermes, both, or all" >&2
     exit 2
     ;;
 esac
@@ -87,11 +93,17 @@ install_root() {
     case "$platform" in
       codex) printf '%s\n' "${HOME}/.codex/skills" ;;
       claude) printf '%s\n' "${HOME}/.claude/skills" ;;
+      opencode) printf '%s\n' "${XDG_CONFIG_HOME:-${HOME}/.config}/opencode/skills" ;;
+      openclaw) printf '%s\n' "${OPENCLAW_SKILLS_HOME:-${HOME}/.openclaw/skills}" ;;
+      hermes) printf '%s\n' "${HERMES_SKILLS_HOME:-${HOME}/.hermes/skills}" ;;
     esac
   else
     case "$platform" in
       codex) printf '%s\n' "${project_dir}/.codex/skills" ;;
       claude) printf '%s\n' "${project_dir}/.claude/skills" ;;
+      opencode) printf '%s\n' "${project_dir}/.opencode/skills" ;;
+      openclaw) printf '%s\n' "${project_dir}/skills" ;;
+      hermes) printf '%s\n' "${project_dir}/skills" ;;
     esac
   fi
 }
@@ -124,10 +136,27 @@ install_for_platform() {
   done
 }
 
-if [[ "$target" == "codex" || "$target" == "both" ]]; then
-  install_for_platform codex
-fi
+platforms=()
+case "$target" in
+  codex) platforms=(codex) ;;
+  claude) platforms=(claude) ;;
+  opencode) platforms=(opencode) ;;
+  openclaw) platforms=(openclaw) ;;
+  hermes) platforms=(hermes) ;;
+  both) platforms=(codex claude) ;;
+  all) platforms=(codex claude opencode openclaw hermes) ;;
+esac
 
-if [[ "$target" == "claude" || "$target" == "both" ]]; then
-  install_for_platform claude
-fi
+installed_roots=":"
+for platform in "${platforms[@]}"; do
+  root="$(install_root "$platform")"
+  case "$installed_roots" in
+    *":${root}:"*)
+      echo "Skipping ${platform}: install root already handled (${root})"
+      ;;
+    *)
+      install_for_platform "$platform"
+      installed_roots="${installed_roots}${root}:"
+      ;;
+  esac
+done

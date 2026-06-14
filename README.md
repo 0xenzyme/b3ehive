@@ -2,7 +2,9 @@
 
 [![Codex Skill](https://img.shields.io/badge/Codex-Skill-blue)](https://github.com/openai/codex)
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-orange)](https://docs.anthropic.com/en/docs/claude-code)
+[![opencode Skill](https://img.shields.io/badge/opencode-Skill-green)](https://opencode.ai)
 [![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-blue)](https://openclaw.ai)
+[![Hermes Skill](https://img.shields.io/badge/Hermes-Skill-purple)](https://hermes-agent.nousresearch.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **"Fake it until make it"** — The Feynman Way
@@ -73,11 +75,11 @@ Clone the whole hive:
 git clone https://github.com/weiyangzen/b3ehive.git
 ```
 
-Install all five skills for both Codex and Claude Code:
+Install all five skills for Codex, Claude Code, opencode, OpenClaw, and Hermes:
 
 ```bash
 cd b3ehive
-scripts/install_skills.sh --target both --scope user
+scripts/install_skills.sh --target all --scope user
 ```
 
 Install only one target when needed:
@@ -85,18 +87,24 @@ Install only one target when needed:
 ```bash
 scripts/install_skills.sh --target codex --scope user
 scripts/install_skills.sh --target claude --scope user
+scripts/install_skills.sh --target opencode --scope user
+scripts/install_skills.sh --target openclaw --scope user
+scripts/install_skills.sh --target hermes --scope user
 ```
 
 Project-local installs are also supported:
 
 ```bash
-scripts/install_skills.sh --target both --scope project --project-dir /path/to/repo
+scripts/install_skills.sh --target all --scope project --project-dir /path/to/repo
 ```
 
 The portable skill layout is documented in
 [docs/agent-platforms.md](docs/agent-platforms.md). Codex uses
 `~/.codex/skills/<skill>/SKILL.md`; Claude Code uses
-`~/.claude/skills/<skill>/SKILL.md`.
+`~/.claude/skills/<skill>/SKILL.md`; opencode uses
+`~/.config/opencode/skills/<skill>/SKILL.md`; OpenClaw uses
+`~/.openclaw/skills/<skill>/SKILL.md`; Hermes uses
+`~/.hermes/skills/<skill>/SKILL.md`.
 
 ## Quick Start
 
@@ -121,6 +129,11 @@ Use migration-cron-builder to migrate one artifact contract into another.
 In Claude Code you can also invoke a skill with slash syntax, for example
 `/execution-cron-builder`.
 
+opencode discovers the same `SKILL.md` directories from `.opencode/skills/`,
+`~/.config/opencode/skills/`, `.claude/skills/`, and `~/.claude/skills/`.
+OpenClaw and Hermes also use `SKILL.md`; for repository/tap installs they both
+accept `skills/<skill>/SKILL.md`.
+
 ## What Makes b3ehive Different
 
 | Traditional AI | b3ehive |
@@ -138,7 +151,7 @@ In Claude Code you can also invoke a skill with slash syntax, for example
 - [optimization-cron-builder](optimization-cron-builder/SKILL.md) — design-guided optimization cron
 - [migration-cron-builder](migration-cron-builder/SKILL.md) — generalized source-to-target migration cron
 - [SKILL.md](SKILL.md) — original PCTF debating specification
-- [docs/agent-platforms.md](docs/agent-platforms.md) — Codex / Claude Code compatibility contract
+- [docs/agent-platforms.md](docs/agent-platforms.md) — Codex / Claude Code / opencode / OpenClaw / Hermes compatibility contract
 - [config.yaml](config.yaml) — root configuration
 
 ## The Name

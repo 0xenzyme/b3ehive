@@ -14,7 +14,7 @@
    - creates parallel `tmux` workers
    - claims DIR/FILE work under lock files
    - runs the cron space guard before worker spawn
-   - calls the selected Codex or Claude Code agent runner
+   - calls the selected Codex, Claude Code, opencode, OpenClaw, or Hermes agent runner
    - verifies output documents are non-empty
    - reconciles checklist marks from output docs
    - checkpoints progress locally

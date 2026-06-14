@@ -1,6 +1,6 @@
 ---
 name: execution-cron-builder
-description: Build or repair a blueprint-driven execution cron for a repository using one authoritative blueprint, a daily todo snapshot, an isolated automation clone, bounded agent-runner batches for Codex or Claude Code, validation gates, checkpoint commits, and cleanup-on-complete. Use when a repo should continuously implement a blueprint, when an execution cron needs to be added to a new repository, or when an existing blueprint-execution cron needs boundary/gate fixes.
+description: Build or repair a blueprint-driven execution cron for a repository using one authoritative blueprint, a daily todo snapshot, an isolated automation clone, bounded agent-runner batches for Codex, Claude Code, opencode, OpenClaw, or Hermes, validation gates, checkpoint commits, and cleanup-on-complete. Use when a repo should continuously implement a blueprint, when an execution cron needs to be added to a new repository, or when an existing blueprint-execution cron needs boundary/gate fixes.
 ---
 
 # Execution Cron Builder
@@ -102,7 +102,7 @@ Required behavior:
 13. Maintain a claim ledger for tmux workers.
    The ledger must record item id, original blueprint id, dependency ids, session name, slot, workspace path, status, claim time, and owned path scopes. Todo generation must display each open item's claim state as `live:<session>`, `finished:<session>`, or `unclaimed`, and must include the claim ledger path.
 14. Every newly launched `tmux` agent worker must use the selected platform's requested/latest high-capability model and effort settings.
-   Honor explicit environment/config values such as `B3EHIVE_AGENT_PLATFORM`, `B3EHIVE_AGENT_RUNNER`, `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, `CODEX_SERVICE_TIER`, `CLAUDE_MODEL`, `CLAUDE_EFFORT`, and `CLAUDE_PERMISSION_MODE`; do not silently replace a requested service tier or permission mode. If no service tier or permission mode is specified, the cron may choose its repo default and must print that value in the guard output.
+   Honor explicit environment/config values such as `B3EHIVE_AGENT_PLATFORM`, `B3EHIVE_AGENT_RUNNER`, `CODEX_MODEL`, `CODEX_REASONING_EFFORT`, `CODEX_SERVICE_TIER`, `CLAUDE_MODEL`, `CLAUDE_EFFORT`, `CLAUDE_PERMISSION_MODE`, `OPENCODE_MODEL`, `OPENCODE_VARIANT`, `OPENCODE_AGENT`, `OPENCLAW_PROFILE`, `OPENCLAW_AGENT`, `OPENCLAW_THINKING`, `HERMES_MODEL`, `HERMES_TOOLSETS`, and `HERMES_SKILLS`; do not silently replace a requested service tier, permission mode, variant, agent, profile, toolset, or preloaded skill list. If no platform-specific runtime option is specified, the cron may choose its repo default and must print that value in the guard output.
 15. Add a main-session integration queue for landed worker outputs.
    The queue must scan claimed worker workspaces, report changed files and diff byte counts, detect path conflicts, and classify outputs whose combined diff is <=256KiB as small-diff batch candidates.
 16. Keep worker claim and master integration as separate cursors.
@@ -161,16 +161,21 @@ Required behavior:
 28. Add a disk/log budget guard before installing or repairing cron.
    The guard must run at the start of every scheduler tick, before spawning workers, and must block new workers when budgets are exceeded.
 
-## Codex / Claude Code Compatibility
+## Agent Platform Compatibility
 
-Generated execution cron code must support both Codex and Claude Code through a
-single agent-runner abstraction.
+Generated execution cron code must support Codex, Claude Code, opencode,
+OpenClaw, and Hermes through a single agent-runner abstraction.
 
 Default platform selection:
 - `B3EHIVE_AGENT_PLATFORM=codex` uses `codex exec`.
 - `B3EHIVE_AGENT_PLATFORM=claude` uses `claude -p`.
+- `B3EHIVE_AGENT_PLATFORM=opencode` uses `opencode run`.
+- `B3EHIVE_AGENT_PLATFORM=openclaw` uses `openclaw agent`.
+- `B3EHIVE_AGENT_PLATFORM=hermes` uses `hermes chat`.
 - `B3EHIVE_AGENT_PLATFORM=auto` may choose Codex when `codex` is available,
-  otherwise Claude Code when `claude` is available.
+  otherwise Claude Code when `claude` is available, otherwise opencode when
+  `opencode` is available, otherwise OpenClaw when `openclaw` is available,
+  otherwise Hermes when `hermes` is available.
 
 Default command templates:
 
@@ -184,11 +189,30 @@ codex exec --cd "$WORKER_REPO" --model "${CODEX_MODEL:-gpt-5.3-codex}" \
 claude -p --model "${CLAUDE_MODEL:-sonnet}" --effort "${CLAUDE_EFFORT:-max}" \
   --permission-mode "${CLAUDE_PERMISSION_MODE:-auto}" \
   --add-dir "$WORKER_REPO" < "$PROMPT_FILE" > "$OUTPUT_FILE"
+
+# opencode
+opencode run --dir "$WORKER_REPO" ${OPENCODE_MODEL:+--model "$OPENCODE_MODEL"} \
+  ${OPENCODE_VARIANT:+--variant "$OPENCODE_VARIANT"} \
+  ${OPENCODE_AGENT:+--agent "$OPENCODE_AGENT"} \
+  < "$PROMPT_FILE" > "$OUTPUT_FILE"
+
+# OpenClaw
+openclaw ${OPENCLAW_PROFILE:+--profile "$OPENCLAW_PROFILE"} agent --local \
+  ${OPENCLAW_AGENT:+--agent "$OPENCLAW_AGENT"} \
+  ${OPENCLAW_THINKING:+--thinking "$OPENCLAW_THINKING"} \
+  --message "$(cat "$PROMPT_FILE")" > "$OUTPUT_FILE"
+
+# Hermes
+hermes chat ${HERMES_MODEL:+--model "$HERMES_MODEL"} \
+  --toolsets "${HERMES_TOOLSETS:-skills,terminal}" \
+  ${HERMES_SKILLS:+-s "$HERMES_SKILLS"} \
+  -q "$(cat "$PROMPT_FILE")" > "$OUTPUT_FILE"
 ```
 
 If `B3EHIVE_AGENT_RUNNER` is set, it is the authoritative template. Validate-only
-output must print the resolved platform, model/effort settings, permission or
-service-tier setting, and command template without leaking secrets.
+output must print the resolved platform, model/effort/variant/profile settings,
+permission/service-tier/agent setting, and command template without leaking
+secrets.
 
 ## Required Components
 
@@ -231,7 +255,7 @@ Requirements:
 - Before each worker batch: `fetch + pull --ff-only` or `fetch + rebase` against the authoritative branch.
 - After each worker batch: `rebase/resolve within owned scope -> push`.
 - Local authoritative repo must also stay synced (`fetch + merge --ff-only`) so "remote updated but local stale" is impossible by design.
-- Newly launched `tmux` agent workers must honor the selected platform configuration; for Codex, preserve the requested service tier in `codex exec`; for Claude Code, preserve the requested `--permission-mode`; if unset, use and print the repo default.
+- Newly launched `tmux` agent workers must honor the selected platform configuration; for Codex, preserve the requested service tier in `codex exec`; for Claude Code, preserve the requested `--permission-mode`; for opencode, preserve the requested `--variant` and `--agent`; for OpenClaw, preserve profile, agent, and thinking level; for Hermes, preserve model, toolsets, and preloaded skill list; if unset, use and print the repo default.
 - Worker count is saturated from the todo DAG order: never exceed the user's max concurrency, but do not reduce worker count merely because dependencies are unfinished or owned paths overlap.
 - The main session is allowed to claim work directly, but should preferentially own integration, validation, dependency-gated closure, merge, and conflict-unblocking tasks when worker branches/worktrees land.
 - Workers must not mark checklist items `[x]`. Their terminal success state is `[_]` plus evidence.

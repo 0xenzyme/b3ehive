@@ -12,6 +12,8 @@ Build a repository-local migration pipeline that converts a frozen source set in
 Migration here means **contracted transformation**, not only tool compatibility. Typical migrations include:
 
 - AI tool assets: Claude Code agents, skills, hooks, rules, docs, templates, and settings -> Codex-ready equivalents
+- AI tool assets: Codex or Claude Code skills -> opencode-ready equivalents
+- AI tool assets: Codex, Claude Code, or opencode skills -> OpenClaw or Hermes-ready equivalents
 - Documentation language: Chinese docs -> English docs, English docs -> Japanese docs, or multilingual doc parity
 - Programming language: Python module -> Rust crate, JavaScript SDK -> TypeScript SDK, shell utility -> Python CLI
 - Interface shape: REST API -> typed SDK, JSON schema v1 -> schema v2, legacy config -> new config
@@ -208,6 +210,68 @@ Validation examples:
 - settings JSON: valid JSON and no Codex-only runtime key presented as a Claude
   Code setting
 
+### Codex / Claude Code -> opencode Assets
+
+Use this preset when the source scope already follows a `SKILL.md` directory
+contract and should become opencode-native:
+
+- `.codex/skills/*/SKILL.md` -> `Docs/migrated/opencode/skills/*/SKILL.md`
+- `.claude/skills/*/SKILL.md` -> `Docs/migrated/opencode/skills/*/SKILL.md`
+- skill directories without a platform wrapper -> `Docs/migrated/opencode/skills/*/SKILL.md`
+- platform runner docs/scripts -> `Docs/migrated/opencode/tools/**`
+- Codex/Claude-only model, effort, service-tier, or permission-mode references
+  -> opencode model, variant, and agent equivalents
+
+Validation examples:
+
+- skill markdown: opencode-compatible `SKILL.md` with supported frontmatter
+  such as `name`, `description`, `license`, `compatibility`, or `metadata`
+- runner docs: use `opencode run --dir` for non-interactive worker execution
+- shell helpers: shebang + `set -euo pipefail` + `bash -n`
+- settings JSON/JSONC: valid syntax and no Codex/Claude-only runtime key
+  presented as an opencode setting
+
+### AgentSkills -> OpenClaw Assets
+
+Use this preset when the source scope follows a `SKILL.md` directory contract
+and should become OpenClaw-native:
+
+- `.codex/skills/*/SKILL.md` -> `Docs/migrated/openclaw/skills/*/SKILL.md`
+- `.claude/skills/*/SKILL.md` -> `Docs/migrated/openclaw/skills/*/SKILL.md`
+- `.opencode/skills/*/SKILL.md` -> `Docs/migrated/openclaw/skills/*/SKILL.md`
+- skill directories without a platform wrapper -> `Docs/migrated/openclaw/skills/*/SKILL.md`
+- platform runner docs/scripts -> `Docs/migrated/openclaw/tools/**`
+
+Validation examples:
+
+- skill markdown: OpenClaw-compatible `SKILL.md` with simple single-line
+  frontmatter fields such as `name` and `description`
+- metadata: if platform metadata is needed, keep it in package/config files or
+  a simple JSON-valued `metadata` field that OpenClaw can parse
+- runner docs: use `openclaw agent --local --message` for non-interactive local
+  worker execution
+- shell helpers: shebang + `set -euo pipefail` + `bash -n`
+
+### AgentSkills -> Hermes Assets
+
+Use this preset when the source scope follows a `SKILL.md` directory contract
+and should become Hermes-native:
+
+- `.codex/skills/*/SKILL.md` -> `Docs/migrated/hermes/skills/*/SKILL.md`
+- `.claude/skills/*/SKILL.md` -> `Docs/migrated/hermes/skills/*/SKILL.md`
+- `.opencode/skills/*/SKILL.md` -> `Docs/migrated/hermes/skills/*/SKILL.md`
+- `skills/*/SKILL.md` -> `Docs/migrated/hermes/skills/*/SKILL.md`
+- platform runner docs/scripts -> `Docs/migrated/hermes/tools/**`
+
+Validation examples:
+
+- skill markdown: Hermes-compatible `SKILL.md` with `name` and `description`
+  frontmatter
+- optional metadata: `metadata.hermes.*` only when the skill needs Hermes-only
+  behavior
+- runner docs: use `hermes chat -q` for non-interactive worker execution
+- shell helpers: shebang + `set -euo pipefail` + `bash -n`
+
 ### Documentation Language Migration
 
 Use this preset when the source and target are natural languages.
@@ -273,7 +337,14 @@ Do not mark a migration item complete for:
 - Default Codex reasoning effort: `xhigh`.
 - Default Claude Code model: `sonnet`.
 - Default Claude Code effort: `max`.
-- Support `B3EHIVE_AGENT_PLATFORM=codex|claude|auto` and
+- Default opencode model/variant: defer to the installed opencode config unless
+  `OPENCODE_MODEL` or `OPENCODE_VARIANT` is set.
+- Default OpenClaw profile/agent/thinking: defer to installed OpenClaw config
+  unless `OPENCLAW_PROFILE`, `OPENCLAW_AGENT`, or `OPENCLAW_THINKING` is set.
+- Default Hermes model/toolsets/preloaded skills: defer to installed Hermes
+  config except defaulting runner toolsets to `skills,terminal`; override with
+  `HERMES_MODEL`, `HERMES_TOOLSETS`, or `HERMES_SKILLS`.
+- Support `B3EHIVE_AGENT_PLATFORM=codex|claude|opencode|openclaw|hermes|auto` and
   `B3EHIVE_AGENT_RUNNER` for custom command templates.
 - Scheduler should only spawn one worker per slot when its pid is not alive.
 - Maintain separate transformer and integrator queues:

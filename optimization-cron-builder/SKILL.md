@@ -1,6 +1,6 @@
 ---
 name: optimization-cron-builder
-description: Build or repair a design-idea-guided optimization cron for a repository. Use when the user provides a design philosophy and wants a Stage_*_AR_Blueprint.md with <=100 checklist items, per-item SOTA optimization research docs under Docs/researches/Stage_*_AR/, parallel tmux workers, Codex or Claude Code agent-runner batches, and cleanup-on-complete.
+description: Build or repair a design-idea-guided optimization cron for a repository. Use when the user provides a design philosophy and wants a Stage_*_AR_Blueprint.md with <=100 checklist items, per-item SOTA optimization research docs under Docs/researches/Stage_*_AR/, parallel tmux workers, Codex, Claude Code, opencode, OpenClaw, or Hermes agent-runner batches, and cleanup-on-complete.
 ---
 
 # Optimization Cron Builder
@@ -103,16 +103,19 @@ Requirements:
 - Remove repo-local `.cron/` and `.ops/` artifacts created only for the optimization run when cleanup-on-complete is enabled.
 - Keep the authoritative blueprint and completed research docs.
 
-## Codex / Claude Code Compatibility
+## Agent Platform Compatibility
 
-Generated optimization cron code must support both Codex and Claude Code via a
-single agent-runner abstraction.
+Generated optimization cron code must support Codex, Claude Code, opencode,
+OpenClaw, and Hermes via a single agent-runner abstraction.
 
 Default platform selection:
 - `B3EHIVE_AGENT_PLATFORM=codex` uses `codex exec`.
 - `B3EHIVE_AGENT_PLATFORM=claude` uses `claude -p`.
+- `B3EHIVE_AGENT_PLATFORM=opencode` uses `opencode run`.
+- `B3EHIVE_AGENT_PLATFORM=openclaw` uses `openclaw agent`.
+- `B3EHIVE_AGENT_PLATFORM=hermes` uses `hermes chat`.
 - `B3EHIVE_AGENT_PLATFORM=auto` may choose the first installed CLI from Codex,
-  then Claude Code.
+  then Claude Code, then opencode, then OpenClaw, then Hermes.
 
 Default command templates:
 
@@ -126,6 +129,24 @@ codex exec --cd "$WORKER_REPO" --model "${CODEX_MODEL:-gpt-5.3-codex}" \
 claude -p --model "${CLAUDE_MODEL:-sonnet}" --effort "${CLAUDE_EFFORT:-max}" \
   --permission-mode "${CLAUDE_PERMISSION_MODE:-auto}" \
   --add-dir "$WORKER_REPO" < "$PROMPT_FILE" > "$OUTPUT_FILE"
+
+# opencode
+opencode run --dir "$WORKER_REPO" ${OPENCODE_MODEL:+--model "$OPENCODE_MODEL"} \
+  ${OPENCODE_VARIANT:+--variant "$OPENCODE_VARIANT"} \
+  ${OPENCODE_AGENT:+--agent "$OPENCODE_AGENT"} \
+  < "$PROMPT_FILE" > "$OUTPUT_FILE"
+
+# OpenClaw
+openclaw ${OPENCLAW_PROFILE:+--profile "$OPENCLAW_PROFILE"} agent --local \
+  ${OPENCLAW_AGENT:+--agent "$OPENCLAW_AGENT"} \
+  ${OPENCLAW_THINKING:+--thinking "$OPENCLAW_THINKING"} \
+  --message "$(cat "$PROMPT_FILE")" > "$OUTPUT_FILE"
+
+# Hermes
+hermes chat ${HERMES_MODEL:+--model "$HERMES_MODEL"} \
+  --toolsets "${HERMES_TOOLSETS:-skills,terminal}" \
+  ${HERMES_SKILLS:+-s "$HERMES_SKILLS"} \
+  -q "$(cat "$PROMPT_FILE")" > "$OUTPUT_FILE"
 ```
 
 Validate-only output must print the selected platform and resolved runner. If

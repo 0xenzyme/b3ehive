@@ -3,7 +3,7 @@
   "slug": "b3ehive",
   "displayName": "b3ehive - Five Swarm Algorithms",
   "version": "1.4.0",
-  "description": "A hive of five Codex and Claude Code compatible agent swarm skills: debating, execution, research, optimization, and migration cron builders.",
+  "description": "A hive of five Codex, Claude Code, opencode, OpenClaw, and Hermes compatible agent swarm skills: debating, execution, research, optimization, and migration cron builders.",
   "author": "weiyangzen",
   "license": "MIT",
   "homepage": "https://github.com/weiyangzen/b3ehive",
@@ -18,6 +18,8 @@
     "openclaw",
     "codex",
     "claude-code",
+    "opencode",
+    "hermes",
     "skill",
     "multi-agent",
     "competition",
@@ -82,5 +84,25 @@
       "migration-cron-builder"
     ],
     "installRoot": "~/.claude/skills"
+  },
+  "opencode": {
+    "skills": [
+      "debating-cron-builder",
+      "execution-cron-builder",
+      "research-cron-builder",
+      "optimization-cron-builder",
+      "migration-cron-builder"
+    ],
+    "installRoot": "~/.config/opencode/skills"
+  },
+  "hermes": {
+    "skills": [
+      "debating-cron-builder",
+      "execution-cron-builder",
+      "research-cron-builder",
+      "optimization-cron-builder",
+      "migration-cron-builder"
+    ],
+    "installRoot": "~/.hermes/skills"
   }
 }

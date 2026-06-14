@@ -306,13 +306,19 @@ b3ehive:
   # Agent configuration
   agents:
     count: 3
-    platform: auto  # codex / claude / auto
+    platform: auto  # codex / claude / opencode / openclaw / hermes / auto
     model:
       codex: openai-proxy/gpt-5.3-codex
       claude: sonnet
+      opencode: null
+      openclaw: null
+      hermes: null
     thinking:
       codex: xhigh
       claude: max
+      opencode: null
+      openclaw: high
+      hermes: null
     focuses:
       - simplicity
       - speed
@@ -351,10 +357,10 @@ b3ehive "Implement a thread-safe rate limiter"
 b3ehive "Implement quicksort" --lang python --max-lines 50
 
 # Using OpenClaw CLI
-openclaw skills run b3ehive --task "Your task"
+openclaw agent --local --message "Use b3ehive for this task: Your task"
 
-# Install portable skills for Codex and Claude Code
-scripts/install_skills.sh --target both --scope user
+# Install portable skills for Codex, Claude Code, opencode, OpenClaw, and Hermes
+scripts/install_skills.sh --target all --scope user
 ```
 
 ---
