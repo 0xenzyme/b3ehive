@@ -34,6 +34,12 @@ yarn.lock
 workspace/
 *.log
 
+# b3ehive local runtime state
+.cron/
+.ops/
+.b3ehive/looper/*.local.*
+.b3ehive/looper/private_denylist.local.txt
+
 # IDE
 .vscode/
 .idea/

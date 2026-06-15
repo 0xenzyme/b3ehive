@@ -1,10 +1,10 @@
 # Execution Cron Pattern
 
-## Local reference repositories
+## Pattern scope
 
-- `/home/sansha/Github/clawdb/.ops/`
-- `/home/sansha/Github/celviz/.ops/`
-- `/home/sansha/Github/cvbackbone/.ops/`
+This reference is intentionally project-neutral. Keep examples generic and never
+name private repositories, local absolute paths, customer workspaces, or
+operator-specific evidence directories in committed skill docs.
 
 ## Best-practice pattern
 
@@ -152,7 +152,7 @@ Preferred for new execution crons.
 - write completed `[x]` marks back to that same blueprint only after master
   integration and real validation
 
-### Legacy private mirror
+### Legacy external mirror
 Allowed only as a convenience mirror after the authoritative blueprint checklist already exists.
 - never treat the mirror as a second requirement source
 - never let the mirror become the only place where completion is reported

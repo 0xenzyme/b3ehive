@@ -1,9 +1,9 @@
 {
   "name": "b3ehive",
   "slug": "b3ehive",
-  "displayName": "b3ehive - Five Swarm Algorithms",
-  "version": "1.4.0",
-  "description": "A hive of five Codex, Claude Code, opencode, OpenClaw, and Hermes compatible agent swarm skills: debating, execution, research, optimization, and migration cron builders.",
+  "displayName": "b3ehive - Six Swarm Algorithms",
+  "version": "1.5.0",
+  "description": "A hive of six Codex, Claude Code, opencode, OpenClaw, and Hermes compatible agent swarm skills: debating, execution, research, optimization, migration, and looper cron builders.",
   "author": "weiyangzen",
   "license": "MIT",
   "homepage": "https://github.com/weiyangzen/b3ehive",
@@ -30,7 +30,10 @@
     "cron-builder",
     "migration",
     "research",
-    "optimization"
+    "optimization",
+    "looper",
+    "roi",
+    "resource-aware"
   ],
   "engines": {
     "openclaw": ">=2026.2.0"
@@ -47,6 +50,7 @@
     "research-cron-builder/",
     "optimization-cron-builder/",
     "migration-cron-builder/",
+    "looper-cron-builder/",
     "docs/",
     "SKILL.md",
     "README.md",
@@ -71,7 +75,8 @@
       "execution-cron-builder",
       "research-cron-builder",
       "optimization-cron-builder",
-      "migration-cron-builder"
+      "migration-cron-builder",
+      "looper-cron-builder"
     ],
     "installRoot": "~/.codex/skills"
   },
@@ -81,7 +86,8 @@
       "execution-cron-builder",
       "research-cron-builder",
       "optimization-cron-builder",
-      "migration-cron-builder"
+      "migration-cron-builder",
+      "looper-cron-builder"
     ],
     "installRoot": "~/.claude/skills"
   },
@@ -91,7 +97,8 @@
       "execution-cron-builder",
       "research-cron-builder",
       "optimization-cron-builder",
-      "migration-cron-builder"
+      "migration-cron-builder",
+      "looper-cron-builder"
     ],
     "installRoot": "~/.config/opencode/skills"
   },
@@ -101,7 +108,8 @@
       "execution-cron-builder",
       "research-cron-builder",
       "optimization-cron-builder",
-      "migration-cron-builder"
+      "migration-cron-builder",
+      "looper-cron-builder"
     ],
     "installRoot": "~/.hermes/skills"
   }

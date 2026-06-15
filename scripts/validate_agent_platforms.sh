@@ -9,6 +9,7 @@ SKILLS=(
   research-cron-builder
   optimization-cron-builder
   migration-cron-builder
+  looper-cron-builder
 )
 
 errors=0

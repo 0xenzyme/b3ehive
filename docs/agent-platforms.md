@@ -27,16 +27,17 @@ or simple JSON-valued `metadata` when needed. Hermes supports user skills under
 `~/.hermes/skills/`, tap/repository skills under `skills/<skill>/SKILL.md`, and
 Hermes-specific metadata under `metadata.hermes.*` when a skill needs it.
 
-The five portable skill directories are:
+The six portable skill directories are:
 
 - `debating-cron-builder`
 - `execution-cron-builder`
 - `research-cron-builder`
 - `optimization-cron-builder`
 - `migration-cron-builder`
+- `looper-cron-builder`
 
 The repository root `SKILL.md` is the legacy PCTF debating specification. Keep it
-for OpenClaw/package compatibility, but install the five skill directories for
+for OpenClaw/package compatibility, but install the six skill directories for
 Codex, Claude Code, opencode, OpenClaw, and Hermes.
 
 ## Runner Contract

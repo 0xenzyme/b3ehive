@@ -20,7 +20,7 @@ b3ehive 把这个思想搬到了 AI Agent 的工作中：让 Agent 把问题拆�
 
 | 传统 AI 助手 | b3ehive |
 |---|---|
-| 一个助手，一种形态 | **五种蜂群组织形态** |
+| 一个助手，一种形态 | **六种蜂群组织形态** |
 | Prompt In → Answer Out | **Checklist → Worker → Validator → Cleanup** |
 | 隐藏状态 | **可检查的 Spec、Todo、Log、Artifact** |
 | "看起来完成了" | **通过验证门，才能 Checkpoint** |
@@ -32,6 +32,7 @@ b3ehive 把这个思想搬到了 AI Agent 的工作中：让 Agent 把问题拆�
 - **未知代码库** → 需要**研究**（research）
 - **成熟系统** → 需要**优化**（optimization）
 - **跨语言/跨工具迁移** → 需要**迁移**（migration）
+- **重复反馈 / 指标桥接** → 需要**资源感知循环**（looper）
 
 b3ehive 不是代码生成器，而是**按科学方法组织的集体工作**：观察地面 → 选择组织形态 → 运行有边界的循环 → 诚实验证 → 留下证据。
 
@@ -49,7 +50,7 @@ Blueprint 是 b3ehive 工作流的**唯一权威需求源**，是整个蜂群的
 
 ---
 
-## 三、五大 Skill 速查
+## 三、六大 Skill 速查
 
 | Skill | 核心能力 | 输入 | 输出 |
 |---|---|---|---|
@@ -58,6 +59,7 @@ Blueprint 是 b3ehive 工作流的**唯一权威需求源**，是整个蜂群的
 | `research-cron-builder` | 代码库研究 | 一个代码仓库 | 每份源码对应的研究文档 |
 | `optimization-cron-builder` | 架构优化研究 | 设计理念 + 阶段蓝图 | 每项优化的研究文档 |
 | `migration-cron-builder` | 产物契约迁移 | Source Contract + Target Contract | 迁移后的目标产物 |
+| `looper-cron-builder` | 资源感知反馈循环 | Bridge Metric + Resource Envelope + Validator | loop daemon、reward/ROI ledger、暂停/恢复策略 |
 
 ---
 

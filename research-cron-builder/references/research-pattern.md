@@ -1,10 +1,10 @@
 # Research Cron Pattern
 
-## Local reference repositories
+## Pattern scope
 
-- `/home/sansha/Github/codex/.ops/`
-- `/home/sansha/Github/openviking/.ops/`
-- `/home/sansha/Github/pi-mono/.ops/`
+This reference is intentionally project-neutral. Keep examples generic and never
+name private repositories, local absolute paths, customer workspaces, or
+operator-specific evidence directories in committed skill docs.
 
 ## Best-practice pattern
 

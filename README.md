@@ -13,7 +13,7 @@
 
 I learned from one of the greatest physicists, **Richard Feynman**, whose nature was cheerful and whose intellect moved easily between worlds. He left behind the renowned **Feynman Technique**: learn by teaching, and prove understanding by making the thing clear enough to survive contact with another mind.
 
-That is the seed of **b3ehive**. Let agents take a problem, give it a shape, divide the work, test the result, and keep moving until the work is real. Sometimes the hive debates. Sometimes it researches quietly. Sometimes it executes a blueprint, refines an architecture, or migrates one contract into another.
+That is the seed of **b3ehive**. Let agents take a problem, give it a shape, divide the work, test the result, and keep moving until the work is real. Sometimes the hive debates. Sometimes it researches quietly. Sometimes it executes a blueprint, refines an architecture, migrates one contract into another, or runs a resource-aware feedback loop around a measurable bridge metric.
 
 The best result is still, fundamentally, **a teacher for humanity**: not because it speaks well, but because it leaves a path another person can inspect, repeat, and improve.
 
@@ -21,7 +21,7 @@ The best result is still, fundamentally, **a teacher for humanity**: not because
 
 One agent is a voice. A swarm is an arrangement.
 
-Different work needs different arrangements. A hard decision may need **debate**. A long implementation needs **execution** with checkpoints. An unknown codebase needs **research**. A mature system needs **optimization**. A useful body of work trapped in the wrong language, runtime, or toolchain needs **migration**.
+Different work needs different arrangements. A hard decision may need **debate**. A long implementation needs **execution** with checkpoints. An unknown codebase needs **research**. A mature system needs **optimization**. A useful body of work trapped in the wrong language, runtime, or toolchain needs **migration**. A repeated validation or product bridge needs a **looper** with explicit resources, reward signals, ROI accounting, and no-reward pause rules.
 
 **b3ehive** is not just code generation. It is collective work shaped like the scientific method: observe the ground, choose the right organization, run bounded cycles, validate honestly, and leave evidence.
 
@@ -51,11 +51,11 @@ state.
 
 | English | 中文 | 日本語 |
 |---|---|---|
-| **b3ehive** is a collection of five swarm algorithms for agent work. Each skill has a narrow job, a hard boundary, and a cleanup rule. The point is not to sound smart. The point is to finish with traces you can inspect. | **b3ehive** 是一组面向 agent 工作的五个蜂群算法。每个 skill 都有明确职责、边界和收尾规则。目标不是说得漂亮，而是把事情做完，并留下能检查的证据。 | **b3ehive** は、agent 作業のための五つの swarm algorithm です。それぞれの skill は役割、境界、終了条件を持ちます。賢そうに見せるためではなく、検証できる形で仕事を終えるための道具です。 |
+| **b3ehive** is a collection of six swarm algorithms for agent work. Each skill has a narrow job, a hard boundary, and a cleanup rule. The point is not to sound smart. The point is to finish with traces you can inspect. | **b3ehive** 是一组面向 agent 工作的六个蜂群算法。每个 skill 都有明确职责、边界和收尾规则。目标不是说得漂亮，而是把事情做完，并留下能检查的证据。 | **b3ehive** は、agent 作業のための六つの swarm algorithm です。それぞれの skill は役割、境界、終了条件を持ちます。賢そうに見せるためではなく、検証できる形で仕事を終えるための道具です。 |
 
 ---
 
-## The Five Hive Skills
+## The Six Hive Skills
 
 | Skill | English | 中文 | 日本語 |
 |---|---|---|---|
@@ -64,6 +64,7 @@ state.
 | `research-cron-builder` | Walks a codebase, writes research notes, tracks progress, runs workers, rotates keys, and stops itself when the map is complete. | 持续扫描代码库，写 research 文档，追踪进度，并行跑 worker，轮换 key，完成后自动停掉。 | コードベースを読み、research docs を書き、進捗を追い、worker と key rotation を管理し、完了したら自分で止まります。 |
 | `optimization-cron-builder` | Starts from a design idea, derives a bounded AR blueprint, researches each item, and pushes the repo toward clearer architecture. | 从设计理念出发，生成有边界的 AR blueprint，逐项研究，把仓库推向更清晰的架构。 | design philosophy から bounded AR blueprint を作り、項目ごとに調査し、repo をより明快な architecture へ寄せます。 |
 | `migration-cron-builder` | Converts one artifact contract into another: tool assets, docs language, programming language, API shape, schema, or runtime layout. Claude to Codex is just one preset. | 把一种 artifact contract 迁移成另一种：工具资产、文档语言、程序语言、API 形态、schema、runtime 布局都可以。Claude 到 Codex 只是一个 preset。 | 一つの artifact contract を別の contract へ移します。tool assets、docs language、programming language、API shape、schema、runtime layout に使えます。Claude to Codex は preset の一つです。 |
+| `looper-cron-builder` | Builds resource-aware loop daemons around DAG nodes or bridge metrics, with leases, rewards, ROI, no-reward pause, and re-funded resume. | 围绕 DAG 节点或 bridge 指标构建资源感知 loop daemon，包含 lease、reward、ROI、无奖励暂停和再注资恢复。 | DAG node または bridge metric の周りに、lease、reward、ROI、no-reward pause、re-funded resume を持つ resource-aware loop daemon を作ります。 |
 
 ---
 
@@ -75,7 +76,7 @@ Clone the whole hive:
 git clone https://github.com/weiyangzen/b3ehive.git
 ```
 
-Install all five skills for Codex, Claude Code, opencode, OpenClaw, and Hermes:
+Install all six skills for Codex, Claude Code, opencode, OpenClaw, and Hermes:
 
 ```bash
 cd b3ehive
@@ -124,6 +125,7 @@ Use execution-cron-builder for this repo and this blueprint.
 Use research-cron-builder to research this codebase.
 Use optimization-cron-builder with this design philosophy.
 Use migration-cron-builder to migrate one artifact contract into another.
+Use looper-cron-builder to add resource-aware loop daemons around these bridge metrics.
 ```
 
 In Claude Code you can also invoke a skill with slash syntax, for example
@@ -138,7 +140,7 @@ accept `skills/<skill>/SKILL.md`.
 
 | Traditional AI | b3ehive |
 |---|---|
-| One assistant, one shape | **Five swarm organizations** |
+| One assistant, one shape | **Six swarm organizations** |
 | Prompt in, answer out | **Checklist, worker, validator, cleanup** |
 | Hidden state | **Inspectable specs, todos, logs, and artifacts** |
 | "Looks done" | **Pass the gate, then checkpoint** |
@@ -150,6 +152,7 @@ accept `skills/<skill>/SKILL.md`.
 - [research-cron-builder](research-cron-builder/SKILL.md) — code research cron
 - [optimization-cron-builder](optimization-cron-builder/SKILL.md) — design-guided optimization cron
 - [migration-cron-builder](migration-cron-builder/SKILL.md) — generalized source-to-target migration cron
+- [looper-cron-builder](looper-cron-builder/SKILL.md) — resource-aware loop daemon cron
 - [SKILL.md](SKILL.md) — original PCTF debating specification
 - [docs/agent-platforms.md](docs/agent-platforms.md) — Codex / Claude Code / opencode / OpenClaw / Hermes compatibility contract
 - [config.yaml](config.yaml) — root configuration
