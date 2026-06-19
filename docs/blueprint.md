@@ -13,7 +13,7 @@ Blueprint 不是传统意义上的需求文档。它是**可执行的、自带�
 | 特征 | 说明 |
 |---|---|
 | **唯一性** | 每个 Skill 有且只有一个 blueprint 文件，禁止多个需求来源互相冲突 |
-| **自带 Checklist** | Blueprint 内包含 `- [ ]` / `- [x]` 标记的执行清单，本身就是进度表 |
+| **自带 Checklist** | Blueprint 内包含 `[ ]` / `[_]` / `[x]` 标记的执行清单，本身就是进度表 |
 | **自带依赖 DAG** | Checklist 项之间可以定义依赖关系，生成每日 todo 时变成拓扑排序的 DAG |
 | **动态更新** | 每完成一批工作，guard 会把 `[ ]` 改为 `[x]` 写回 blueprint，它是活的 |
 | **分层结构** | 可定义"层"（layer），强制执行"底层未完成前上层不能关闭" |
@@ -26,7 +26,7 @@ Blueprint 不是传统意义上的需求文档。它是**可执行的、自带�
 | **内容构成** | 需求描述 + 验收标准 | 需求描述 + **执行清单** + **实时进度** + **依赖关系** |
 | **生命周期** | 项目启动时写好，完成后归档 | 贯穿整个开发周期，持续被修改（打勾、拆分、更新） |
 | **权威源** | 可能有多个子文档、多个版本 | **有且只有一个权威源**，所有工作由此派生 |
-| **完成状态** | 在 Jira/Trello/项目管理工具里 | 完成状态就在 **blueprint 文件本身**里（`[ ]` → `[x]`） |
+| **完成状态** | 在 Jira/Trello/项目管理工具里 | 完成状态就在 **blueprint 文件本身**里（`[ ]` → `[_]` → `[x]`） |
 | **执行驱动** | 人读了 Spec 再去写代码 | Blueprint **直接驱动** Worker 执行，无需人工翻译 |
 | **验证方式** | 靠人工 review 是否符合 Spec | 靠自动**验证门**（编译/测试/lint）决定能否打勾 |
 | **变更管理** | 变更需要走流程、重审文档 | Guard 自动管理变更（超时拆分、层门重置、子项展开） |
@@ -109,7 +109,7 @@ Blueprint 不是传统意义上的需求文档。它是**可执行的、自带�
 
 Blueprint 是**权威源**，每日 todo 是它的**只读派生视图**：
 
-- Todo 只包含 blueprint 中未完成的项（`[ ]`）
+- Todo 只包含 blueprint 中未完成的项（`[ ]` 和 `[_]`）
 - Todo 包含当前 DAG 状态：node_id、依赖、claim_owner、integration_state
 - Todo 中的路径必须是**仓库相对路径**，禁止泄露 `.cron/automation_repo*` 等绝对路径
 - 每次成功 batch 后，guard 会**先更新 blueprint**，再**刷新 todo**
@@ -123,7 +123,7 @@ Blueprint 是**权威源**，每日 todo 是它的**只读派生视图**：
 | `execution-cron-builder` | 一个 Markdown 文件，里面有散文式需求描述 + checklist 段落。cron 按 checklist 逐项实现代码。 |
 | `research-cron-builder` | 生成的 `blueprint_checklist.md`，从仓库树扫描而来，每个源码文件对应一个研究任务。 |
 | `optimization-cron-builder` | `Stage_*_AR_Blueprint.md`，从设计理念推导出的架构优化清单，每项对应一篇研究文档。 |
-| `debating-cron-builder` | **没有 blueprint**。输入是 `task_description` + `constraints`，3 个 agent 直接竞争实现。 |
+| `compete-cron-builder` | blueprint 是一个局部 `question_type`。也可用于 execution choice、coverage union、repair queue、SEO strategy 等局部竞争。 |
 | `migration-cron-builder` | 核心文档是 `MIGRATION_SPEC.md`，属于 blueprint 的"迁移泛化"：用 source→target contract 替代 blueprint。 |
 
 ---
@@ -135,11 +135,11 @@ Bootstrap:   初始化 checklist，所有项标记为 [ ]
     ↓
 Daily Todo:  从 blueprint 的未完成项生成当日 todo（含 DAG 依赖）
     ↓
-Worker 执行: 按 DAG 顺序 claim 任务，产出代码/文档
+Worker 执行: 按 DAG 顺序 claim 任务，产出代码/文档，将自测通过项标记为 [_]
     ↓
-Validation:  运行验证门（编译、测试、lint 等）
+Validation:  Master 集成 [_] 输出并运行验证门（编译、测试、lint 等）
     ↓
-Checkpoint:  通过后，将 [ ] 改为 [x]，写回 blueprint
+Checkpoint:  通过后，将 [_] 改为 [x]，写回 blueprint
     ↓
 Cleanup:     当 blueprint 中所有项都变为 [x]，cron 自动停止并清理自身
 ```

@@ -29,16 +29,15 @@ Hermes-specific metadata under `metadata.hermes.*` when a skill needs it.
 
 The six portable skill directories are:
 
-- `debating-cron-builder`
+- `compete-cron-builder`
 - `execution-cron-builder`
 - `research-cron-builder`
 - `optimization-cron-builder`
 - `migration-cron-builder`
 - `looper-cron-builder`
 
-The repository root `SKILL.md` is the legacy PCTF debating specification. Keep it
-for OpenClaw/package compatibility, but install the six skill directories for
-Codex, Claude Code, opencode, OpenClaw, and Hermes.
+The repository root `SKILL.md` is the b3ehive skill index. Install the six skill
+directories for Codex, Claude Code, opencode, OpenClaw, and Hermes.
 
 ## Runner Contract
 

@@ -4,12 +4,16 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 SKILLS=(
-  debating-cron-builder
+  compete-cron-builder
   execution-cron-builder
   research-cron-builder
   optimization-cron-builder
   migration-cron-builder
   looper-cron-builder
+)
+
+DEPRECATED_SKILLS=(
+  debating-cron-builder
 )
 
 usage() {
@@ -119,6 +123,16 @@ install_for_platform() {
   else
     mkdir -p "$root"
   fi
+
+  for skill in "${DEPRECATED_SKILLS[@]}"; do
+    local dst="${root}/${skill}"
+    if [[ "$dry_run" -eq 1 ]]; then
+      echo "[dry-run] remove deprecated ${dst}"
+    else
+      rm -rf "$dst"
+      echo "Removed deprecated ${platform}: ${dst}"
+    fi
+  done
 
   for skill in "${SKILLS[@]}"; do
     local src="${ROOT_DIR}/${skill}"

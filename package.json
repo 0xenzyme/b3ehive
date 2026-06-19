@@ -3,7 +3,7 @@
   "slug": "b3ehive",
   "displayName": "b3ehive - Six Swarm Algorithms",
   "version": "1.5.0",
-  "description": "A hive of six Codex, Claude Code, opencode, OpenClaw, and Hermes compatible agent swarm skills: debating, execution, research, optimization, migration, and looper cron builders.",
+  "description": "A hive of six Codex, Claude Code, opencode, OpenClaw, and Hermes compatible agent swarm skills: compete, execution, research, optimization, migration, and looper cron builders.",
   "author": "weiyangzen",
   "license": "MIT",
   "homepage": "https://github.com/weiyangzen/b3ehive",
@@ -45,7 +45,7 @@
     "bin/",
     "scripts/",
     "templates/",
-    "debating-cron-builder/",
+    "compete-cron-builder/",
     "execution-cron-builder/",
     "research-cron-builder/",
     "optimization-cron-builder/",
@@ -71,7 +71,7 @@
   },
   "codex": {
     "skills": [
-      "debating-cron-builder",
+      "compete-cron-builder",
       "execution-cron-builder",
       "research-cron-builder",
       "optimization-cron-builder",
@@ -82,7 +82,7 @@
   },
   "claudeCode": {
     "skills": [
-      "debating-cron-builder",
+      "compete-cron-builder",
       "execution-cron-builder",
       "research-cron-builder",
       "optimization-cron-builder",
@@ -93,7 +93,7 @@
   },
   "opencode": {
     "skills": [
-      "debating-cron-builder",
+      "compete-cron-builder",
       "execution-cron-builder",
       "research-cron-builder",
       "optimization-cron-builder",
@@ -104,7 +104,7 @@
   },
   "hermes": {
     "skills": [
-      "debating-cron-builder",
+      "compete-cron-builder",
       "execution-cron-builder",
       "research-cron-builder",
       "optimization-cron-builder",

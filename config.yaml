@@ -31,6 +31,9 @@ b3ehive:
       openclaw: high
       hermes: null
   evaluation:
+    competition_shape: three_way_challenge
+    artifact_layout: old_three_way
+    selection_mode: vote_then_tiebreak
     dimensions:
       simplicity: 20
       speed: 25

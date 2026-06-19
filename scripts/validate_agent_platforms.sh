@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 SKILLS=(
-  debating-cron-builder
+  compete-cron-builder
   execution-cron-builder
   research-cron-builder
   optimization-cron-builder

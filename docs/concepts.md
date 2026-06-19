@@ -27,7 +27,7 @@ b3ehive 把这个思想搬到了 AI Agent 的工作中：让 Agent 把问题拆�
 
 不同的工作，需要不同的组织方式：
 
-- **难以决策** → 需要**辩论**（debating）
+- **难以决策或需要覆盖** → 需要 **compete**（proposal competition / coverage union）
 - **长期实现** → 需要**执行**（execution）
 - **未知代码库** → 需要**研究**（research）
 - **成熟系统** → 需要**优化**（optimization）
@@ -42,7 +42,7 @@ b3ehive 不是代码生成器，而是**按科学方法组织的集体工作**�
 
 Blueprint 是 b3ehive 工作流的**唯一权威需求源**，是整个蜂群的"心脏"和"燃料"。
 
-它不是一个静态的 Spec 文档，而是**可执行的、自带状态的、驱动机器工作**的活的规格说明。Blueprint 内嵌 checklist（`- [ ]` / `- [x]`）、依赖 DAG、分层结构，guard 直接读取它来决定"今天做什么、做到哪了、下一步做什么"。
+它不是一个静态的 Spec 文档，而是**可执行的、自带状态的、驱动机器工作**的活的规格说明。Blueprint 内嵌 checklist（`[ ]` / `[_]` / `[x]`）、依赖 DAG、分层结构，guard 直接读取它来决定"今天做什么、做到哪了、下一步做什么"。
 
 > **一句话：传统 Spec 回答"做什么"，Blueprint 回答"做什么 + 做到哪了 + 下一步做什么 + 能不能做"。**
 
@@ -54,7 +54,7 @@ Blueprint 是 b3ehive 工作流的**唯一权威需求源**，是整个蜂群的
 
 | Skill | 核心能力 | 输入 | 输出 |
 |---|---|---|---|
-| `debating-cron-builder` | 多 Agent 辩论选优 | 一个任务描述 | 最优实现 + 对比报告 + 决策理由 |
+| `compete-cron-builder` | 多 proposal 竞争、选优、合并或修复队列 | 一个局部问题 + n/m/k 预算 | selected candidates、coverage union、repair queue 或 blueprint synthesis |
 | `execution-cron-builder` | 按蓝图持续执行代码 | 一个 Blueprint | 逐项实现的代码 + checkpoint 提交 |
 | `research-cron-builder` | 代码库研究 | 一个代码仓库 | 每份源码对应的研究文档 |
 | `optimization-cron-builder` | 架构优化研究 | 设计理念 + 阶段蓝图 | 每项优化的研究文档 |
