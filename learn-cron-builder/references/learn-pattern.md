@@ -175,19 +175,19 @@ When a run is already in motion and progress state is wrong:
 7. If the checklist is empty or corrupted, fix the generator to use atomic
    writes, rebuild from source manifest, and copy to any expected alias.
 
-## Removed Tool Coverage
+## Mode Coverage
 
-Old code research maps to:
+Code understanding maps to:
 
 ```text
 learn_mode=understand
 ```
 
-Old migration maps to:
+Source transformation and human-language translation map to:
 
 ```text
 learn_mode=transform
 learn_mode=translate
 ```
 
-Do not recreate public wrappers named after the removed tools.
+Do not create additional public wrappers for these modes.

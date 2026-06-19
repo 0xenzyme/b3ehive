@@ -65,15 +65,6 @@ state.
 | `optimization-cron-builder` | Starts from a design idea, derives a bounded AR blueprint, examines each item, and pushes the repo toward clearer architecture. | 从设计理念出发，生成有边界的 AR blueprint，逐项检查，把仓库推向更清晰的架构。 | design philosophy から bounded AR blueprint を作り、項目ごとに検討し、repo をより明快な architecture へ寄せます。 |
 | `looper-cron-builder` | Builds resource-aware bridge controllers around DAG nodes, bridge surfaces, metrics, nested skill attempts, and operator signals, with leases, side-effect gates, compact evidence, rewards, ROI, no-reward pause, and re-funded resume. | 围绕 DAG 节点、bridge surface、指标、嵌套 skill attempt 和 operator signal 构建资源感知 bridge controller，包含 lease、副作用门、紧凑证据、reward、ROI、无奖励暂停和再注资恢复。 | DAG node、bridge surface、metric、nested skill attempt、operator signal の周りに、lease、side-effect gate、compact evidence、reward、ROI、no-reward pause、re-funded resume を持つ resource-aware bridge controller を作ります。 |
 
-Removed tool: `debating-cron-builder` has been removed from the public toolset.
-Its old three-agent behavior is covered by `compete-cron-builder` with
-`--competition-shape three_way_challenge --artifact-layout old_three_way`.
-
-Removed tools: `research-cron-builder` and `migration-cron-builder` have been
-removed from the public toolset. Their behavior is covered by
-`learn-cron-builder` with `learn_mode=understand`, `learn_mode=transform`, and
-`learn_mode=translate`.
-
 ---
 
 ## Install

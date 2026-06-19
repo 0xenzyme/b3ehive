@@ -8,15 +8,6 @@ description: Build or repair a source-to-target learning cron for code understan
 Build a repository-local learning pipeline that converts a frozen source scope
 into validated learning or transformation artifacts.
 
-Publicly removed tools:
-
-```text
-research-cron-builder
-migration-cron-builder
-```
-
-Use `learn-cron-builder` instead.
-
 Core frame:
 
 ```text
@@ -28,16 +19,16 @@ understand it until make it
 ```text
 learn_mode=understand
   code -> human language
-  Covers old code research behavior.
+  Produces one-to-one learning notes and source-tree understanding artifacts.
 
 learn_mode=transform
   code -> code
-  Covers removed code-to-code, API/schema/runtime transformation, SDK
-  generation, adapter generation, and tool asset conversion behavior.
+  Produces code-to-code, API/schema/runtime transformation, SDK generation,
+  adapter generation, or tool asset conversion artifacts.
 
 learn_mode=translate
   human language -> human language
-  Covers removed documentation language conversion and localization behavior.
+  Produces documentation language conversion and localization artifacts.
 ```
 
 The workflow is always:
@@ -191,4 +182,4 @@ Read only the relevant reference:
   chunking, folder synthesis, and subset coverage rules.
 - `references/route-policy.md` for mode-specific route selection and escalation.
 - `references/learn-pattern.md` for full workflow, components, and behavior
-  coverage from removed public tools.
+  coverage.

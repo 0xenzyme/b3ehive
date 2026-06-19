@@ -6,9 +6,6 @@ description: Run or embed a bounded proposal competition for coding, research, p
 # Compete Cron Builder
 
 Use this skill to turn one local question into a bounded proposal competition.
-The removed `debating-cron-builder` is fully covered by
-`competition_shape=three_way_challenge` plus `artifact_layout=old_three_way`;
-do not invoke or recreate the old public tool.
 
 ## Core Model
 
@@ -85,8 +82,8 @@ Template variables available to `--command`:
 
 ## Three-Way Challenge Coverage
 
-`competition_shape=three_way_challenge` replaces the removed public
-three-agent tool. It must preserve the old behavior surface:
+`competition_shape=three_way_challenge` provides the deterministic
+three-candidate challenge surface:
 
 ```text
 candidate_ids = run_a, run_b, run_c

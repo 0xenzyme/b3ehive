@@ -20,26 +20,3 @@ b3ehive provides five portable `SKILL.md` directories:
   BridgeSurfaces, BridgeMetrics, ResourceEnvelopes, ResourceLeases,
   SideEffectGates, OperatorSignals, nested run ledgers, compact evidence,
   reward ledgers, ROI, and no-reward pause.
-
-## Removed Tool
-
-`debating-cron-builder` was removed from the public toolset. Its old
-three-agent workflow is covered by `compete-cron-builder` through:
-
-```text
-competition_shape = three_way_challenge
-artifact_layout = old_three_way
-selection_mode = vote_then_tiebreak
-candidate_ids = run_a, run_b, run_c
-```
-
-Use `compete-cron-builder` for all proposal competition work.
-
-`research-cron-builder` and `migration-cron-builder` were removed from the
-public toolset. Their behavior is covered by `learn-cron-builder`:
-
-```text
-learn_mode=understand  # code -> human learning notes
-learn_mode=transform   # code -> code/source contract transform
-learn_mode=translate   # human language -> human language
-```
