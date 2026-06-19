@@ -437,6 +437,17 @@ Do not commit batch outputs for:
 - Scale worker count to the user-requested concurrency cap from the DAG claim frontier. If dependencies or path conflicts exist, workers may still prepare provisional implementation output; the main session must merge, validate, and close those nodes only when the DAG dependency constraints are satisfied.
 - For landed worker outputs with no path conflicts and combined diff <=256KiB, prefer batch apply + combined validation over one-worker-at-a-time master validation. Blueprint closure remains dependency ordered and may be a prefix of the applied batch.
 
+## Looper Embed Rules
+
+When embedded in `looper-cron-builder`, execution may run only inside an active
+`ResourceLease` with a `ParentLeaseRef`. Nested execution attempts can create
+child implementation candidates, repair child items, or validation-focused
+patches, but they cannot write `[x]` or escape parent lease budget.
+
+The parent looper attempt owns final reward classification, no-reward
+accounting, and ROI. Execution outputs remain provisional until the master lane
+integrates them in DAG order and validates the authoritative checkout.
+
 ## Validation
 
 Use the smallest real validation commands the repo supports.

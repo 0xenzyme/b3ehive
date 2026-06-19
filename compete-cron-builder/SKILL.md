@@ -166,13 +166,17 @@ Valid handoff actions:
 ## Looper Embed Rules
 
 When embedded in `looper-cron-builder`, compete may run only inside an active
-`ResourceLease`. Its token, wall-clock, human-review, disk, and diff costs count
-against that lease. Candidate outputs remain provisional until master accepts
-them in DAG order.
+`ResourceLease` with a `ParentLeaseRef`. Its token, wall-clock, human-review,
+disk, and diff costs count against that parent lease. Candidate outputs remain
+provisional until master accepts them in DAG order.
 
 If a compete-heavy loop produces no primary or secondary reward, record it in
 the no-reward accumulator. Paused loops require explicit resource refund plus a
 strategy change before resume.
+
+Nested compete runs cannot write `[x]`, cannot escape the parent lease budget,
+and produce reward candidates only. The parent looper attempt owns final reward
+classification and ROI accounting.
 
 ## Operating Rules
 

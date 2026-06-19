@@ -27,16 +27,15 @@ or simple JSON-valued `metadata` when needed. Hermes supports user skills under
 `~/.hermes/skills/`, tap/repository skills under `skills/<skill>/SKILL.md`, and
 Hermes-specific metadata under `metadata.hermes.*` when a skill needs it.
 
-The six portable skill directories are:
+The five portable skill directories are:
 
 - `compete-cron-builder`
 - `execution-cron-builder`
-- `research-cron-builder`
+- `learn-cron-builder`
 - `optimization-cron-builder`
-- `migration-cron-builder`
 - `looper-cron-builder`
 
-The repository root `SKILL.md` is the b3ehive skill index. Install the six skill
+The repository root `SKILL.md` is the b3ehive skill index. Install the five skill
 directories for Codex, Claude Code, opencode, OpenClaw, and Hermes.
 
 ## Runner Contract

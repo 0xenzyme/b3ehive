@@ -1,6 +1,6 @@
 ---
 name: optimization-cron-builder
-description: Build or repair a design-idea-guided optimization cron for a repository. Use when the user provides a design philosophy and wants a Stage_*_AR_Blueprint.md with <=100 checklist items, per-item SOTA optimization research docs under Docs/researches/Stage_*_AR/, parallel tmux workers, Codex, Claude Code, opencode, OpenClaw, or Hermes agent-runner batches, and cleanup-on-complete.
+description: Build or repair a design-idea-guided optimization cron for a repository. Use when the user provides a design philosophy and wants a Stage_*_AR_Blueprint.md with at most 100 checklist items, per-item SOTA optimization research docs under Docs/researches/Stage_*_AR/, parallel tmux workers, Codex, Claude Code, opencode, OpenClaw, or Hermes agent-runner batches, and cleanup-on-complete.
 ---
 
 # Optimization Cron Builder
@@ -185,6 +185,18 @@ When workers produce docs that are broad but not item-pure:
 - do not mark the item complete
 - split the checklist item or narrow the doc title and scope
 - rerun only the affected section
+
+## Looper Embed Rules
+
+When embedded in `looper-cron-builder`, optimization may run only inside an
+active `ResourceLease` with a `ParentLeaseRef`. Use it for periodic architecture
+refinement, design-philosophy research refresh, or strategy/blueprint bridge
+refinement.
+
+Nested optimization runs cannot write `[x]`, cannot escape parent lease budget,
+and produce reward candidates only. They should attach to a looper
+`BridgeSurface` with `bridge_level=strategy` or `bridge_level=blueprint`, and
+their output must change a real decision surface before it can count as reward.
 
 ## Local References
 

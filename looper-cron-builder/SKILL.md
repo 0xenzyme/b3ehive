@@ -1,34 +1,45 @@
 ---
 name: looper-cron-builder
-description: Build or repair a resource-aware, reward-aware, ROI-tracked loop daemon for a DAG-driven repository. Use when blueprint nodes, bridge metrics, product validation goals, benchmark lanes, monitoring signals, or repeated validation failures need bounded loop attempts, explicit resource leases, evidence ledgers, no-reward pause rules, and re-funded resume under a master acceptance gate.
+description: Build or repair a resource-aware, reward-aware, ROI-tracked bridge controller for a DAG-driven repository. Use when blueprint nodes, bridge surfaces, bridge metrics, product validation goals, benchmark lanes, monitoring signals, repeated validation failures, nested b3ehive skill attempts, or operator-controlled feedback loops need bounded attempts, explicit resource leases, side-effect gates, compact evidence ledgers, no-reward pause rules, and re-funded resume under a master acceptance gate.
 ---
 
 # Looper Cron Builder
 
 ## Overview
 
-Build a repository-local looper cron that monitors explicit bridge metrics and
-DAG nodes, allocates bounded resource leases, launches loop daemon attempts,
-records resource consumption and reward signals, computes ROI, pauses loops that
-consume resources without reward, and resumes paused loops only after explicit
-re-funding plus a strategy change.
+Build a repository-local looper cron that monitors explicit bridge surfaces,
+bridge metrics, and DAG nodes, allocates bounded resource leases, launches loop
+daemon attempts, records compact evidence and reward signals, computes ROI,
+pauses loops that consume resources without reward, and resumes paused loops
+only after explicit re-funding plus a strategy change.
 
 Looper is a feedback overlay, not a cycle inside the dependency graph:
 
 ```text
 DAG = dependency order, still acyclic
-Bridge metric = measurable validation surface between intent and execution
-Loop daemon = conditional feedback actor around a node, subgraph, or metric
+Bridge surface = level of state the loop is trying to move
+Bridge signal = evidence that can prove useful movement
+Bridge delta = before -> after movement on a bridge surface
+Loop daemon = conditional feedback actor around a node, surface, or metric
 Resource broker = budget, lease, pause, and resume authority
-Reward ledger = evidence that the loop produced value
+Side-effect gate = boundary around risky writes, spend, publish, or deletion
+Evidence ledger = compact fact index for audit and master acceptance
+Reward ledger = classification that a bridge delta or artifact produced value
 Master lane = only actor allowed to accept final completion
 ```
 
 Do not add cyclic dependency edges to the DAG. Attach loop specs beside DAG
-nodes or bridge metrics, and let the master lane close checklist items only
-after validation passes.
+nodes, bridge surfaces, or bridge metrics, and let the master lane close
+checklist items only after validation passes.
 
-## Privacy and Generalization Rule
+Assume the strongest available LLM is already being used. Do not add heavy
+semantic scaffolding by default. Let the model handle relevance, fuzzy scope,
+strategy writing, bridge writing, failure explanation, and handoff synthesis.
+Looper owns resources, leases, concurrency, side effects, evidence, reward
+classification, ROI, pause/resume, operator signals, nested spend attribution,
+and master-only acceptance.
+
+## Privacy And Generalization
 
 Generated looper specs, docs, prompts, ledgers, and examples must stay
 project-neutral unless the user explicitly asks for a private, local-only
@@ -48,26 +59,36 @@ Public or committed Looper artifacts must not include:
 Use generic labels such as `product_beta`, `repo_maintenance`,
 `benchmark_lane`, `claim_audit`, `customer_workflow`, `growth_experiment`, and
 `ops_review`. If a private name is necessary for local execution, keep it in
-`.cron/`, `.ops/`, an ignored local config, or a prompt/log surface that is not
-committed.
+`.cron/`, `.ops/`, `.b3ehive/looper/*.local.*`, or another ignored surface.
 
-## Core Model
+## Core Objects
 
-Every Looper installation must define these objects:
+Every Looper installation must define or deliberately omit these objects:
 
 ```text
 LoopSpec
+BridgeSurface
+BridgeSignal
+BridgeDelta
 BridgeMetric
 LoopInstance
 ResourceEnvelope
 ResourceLease
 AttemptWorker
+SideEffectGate
+OperatorSignal
+NestedRunLedger
+EvidenceLedger
 RewardSignal
 ROILedger
 PauseResumePolicy
 ```
 
-### LoopSpec
+`BridgeMetric` remains valid, but it is one `BridgeSignal` kind. Use
+`BridgeSurface`, `BridgeSignal`, and `BridgeDelta` when movement is qualitative,
+document-based, strategic, handoff-based, or otherwise broader than one metric.
+
+## LoopSpec
 
 `LoopSpec` is the static definition of a loop. Store committed generic specs
 under a neutral docs path such as:
@@ -76,7 +97,7 @@ under a neutral docs path such as:
 Docs/looper/LOOP_SPEC.md
 ```
 
-Runtime-expanded private specs may live under ignored paths such as:
+Runtime-expanded private specs may live under ignored paths:
 
 ```text
 .b3ehive/looper/loops.yaml
@@ -88,6 +109,8 @@ Minimum fields:
 ```yaml
 loop_id: LOOP-REPO-MAINTENANCE-REPAIR
 attach_to:
+  bridge_surface_ids:
+    - repo_maintenance_to_accepted_patch
   bridge_metric_ids:
     - build_test_fix_report_completed_count
   dag_node_ids:
@@ -137,33 +160,29 @@ pause_resume:
     - bridge_target_changed
 ```
 
-### BridgeMetric
+## Bridge Control
 
-`BridgeMetric` is the measurable surface Looper watches. It can represent a
-product validation target, repository maintenance target, benchmark target,
-claim-audit target, support workflow target, or operational KPI.
+Use bridge surfaces to describe what level of state the loop is moving:
 
-Minimum fields:
-
-```yaml
-metric_id: build_test_fix_report_completed_count
-owner_loop: LOOP-REPO-MAINTENANCE-REPAIR
-target: 3
-window: 4w
-current_value: 1
-evidence_ref: Docs/looper/evidence/repo_maintenance.md
-failure_signal: attempts consume budget without producing a replayable trajectory
-reward_weight: 10
-privacy_class: generic_committable
+```text
+bridge_level =
+  context | handoff | memory | artifact | blueprint | strategy | metric | identity
 ```
 
-Bridge metrics drive three decisions:
+Rules:
 
-- `trigger`: start or wake a loop when a metric is below target, stale, or failed.
-- `reward`: count improvement as primary or secondary reward.
-- `downgrade`: pause, split, or downgrade when spend accumulates without reward.
+- `BridgeMetric` remains valid, but it is one bridge signal kind.
+- Memory is a bridge level, not a separate public subsystem.
+- Identity-level movement requires explicit master approval.
+- A `BridgeDelta` records before -> after movement; it is not automatically
+  reward.
+- Reward classification and master acceptance happen after evidence exists.
 
-### ResourceEnvelope
+Read `references/bridge-control.md` when a loop uses non-metric bridge
+surfaces, side-effect gates, operator signals, nested skill attempts, or compact
+evidence ledgers.
+
+## Resources And Leases
 
 `ResourceEnvelope` is the total budget granted to a loop for a period.
 
@@ -193,14 +212,8 @@ Track at least:
 }
 ```
 
-Generated guards must refuse new attempts when the envelope is exhausted.
-
-### ResourceLease
-
 `ResourceLease` is the short-lived budget granted to one daemon activation or
-attempt worker.
-
-No lease means no attempt.
+attempt worker. No lease means no attempt.
 
 Minimum fields:
 
@@ -223,14 +236,80 @@ Leases must have TTL, heartbeat, owner, workspace, and reclaim behavior. Expired
 leases, dead daemon owners, and missing heartbeat files must be released before
 new workers are spawned.
 
-## Reward and ROI Accounting
+## SideEffectGate
+
+Use minimal side-effect gates for risky operations only:
+
+```text
+protected_path
+dangerous_command
+large_diff
+secret_exposure
+push_or_publish
+delete_or_destructive_write
+network_or_spend
+authoritative_blueprint_write
+identity_level_write
+```
+
+Normal file reads, ordinary reasoning, and harmless local writes inside owned
+paths do not need default gates. Workers may create candidates or `[_]`
+evidence, but protected surfaces, broad deletion, publishing, spending, and
+identity-level writes require explicit gate decisions.
+
+## OperatorSignal
+
+Support operator or master-lane control signals:
+
+```text
+cancel
+drain
+pause_after_current
+resume
+replan
+force_sync
+freeze_scope
+unfreeze_scope
+escalate_to_master
+retire_loop
+split_loop
+change_resource_envelope
+change_bridge_target
+```
+
+Pending operator signals must be processed before new leases. `cancel`,
+`drain`, and `pause_after_current` block new lease allocation until resolved.
+
+## Nested Runs
+
+Nested b3ehive runs inside a loop attempt must inherit the parent resource
+lease unless explicitly granted a child lease:
+
+```text
+looper attempt
+  -> compete repair search
+  -> learn subset understanding
+  -> execution child patch
+  -> optimization strategy refresh
+```
+
+Nested runs cannot write `[x]`, cannot escape the parent lease budget, and
+cannot claim accepted reward directly. They produce provisional outputs and
+reward candidates. Parent attempt accounting includes nested run cost.
+
+## EvidenceLedger
+
+Use compact evidence records, not full transcript adjudication. Each evidence
+record should name the loop, attempt, lease, input contract, owned paths,
+changed files, commands run, validation result, bridge delta refs, side-effect
+decisions, nested run refs, reward candidates, and master decision.
+
+## Reward And ROI Accounting
 
 Looper must record value after every attempt. A loop that consumes resources but
 does not create reward must pause.
 
-### Reward Classes
-
-Primary rewards directly move the bridge metric or close validated work:
+Primary rewards directly move the bridge surface or close validated work:
 
 - accepted patch
 - replayable execution trajectory
@@ -247,6 +326,8 @@ Secondary rewards create reusable learning or infrastructure:
 - reproduction path recorded
 - scope narrowed
 - reusable workflow or skill extracted
+- bridge route clarified
+- actionable handoff produced
 - benchmark harness improved
 - objection or support taxonomy created
 
@@ -260,128 +341,19 @@ Negative or no-reward outcomes consume resources without usable progress:
 - claim still unsupported
 - only narrative summary was produced
 
-### ROILedger
-
 Every Looper cron must maintain a ROI ledger under an ignored runtime path and
-may generate a sanitized committed report.
+may generate a sanitized committed report. Generated cron code may let users
+override weights, but it must not omit resource cost, bridge movement, reward
+class, and decision fields.
 
-Runtime ledger example:
+## Pause And Resume
 
-```json
-{
-  "loop_id": "LOOP-REPO-MAINTENANCE-REPAIR",
-  "period": "2026-W25",
-  "spent": {
-    "usd": 6.4,
-    "tokens": 580000,
-    "wall_clock_minutes": 134,
-    "human_review_minutes": 18
-  },
-  "rewards": {
-    "primary": ["accepted_patch"],
-    "secondary": ["failure_cause_classified", "validator_added"],
-    "negative": ["one_attempt_not_reproducible"]
-  },
-  "bridge_metrics": {
-    "build_test_fix_report_completed_count": {
-      "before": 1,
-      "after": 2,
-      "target": 3
-    }
-  },
-  "roi_score": 1.7,
-  "decision": "continue_with_same_budget"
-}
-```
+Each loop must maintain a no-reward accumulator. Primary reward clears it,
+secondary reward reduces it, weak evidence reduces it at most modestly, and
+negative reward continues accumulation.
 
-Default scoring model:
-
-```text
-gross_reward =
-  10 * primary_reward_count
-  + 3 * secondary_reward_count
-  + 1 * evidence_point_count
-  - 5 * negative_reward_count
-  - 8 * unsupported_claim_penalty
-
-resource_cost =
-  usd_spent
-  + 0.000002 * tokens_spent
-  + 0.05 * wall_clock_minutes
-  + 0.5 * human_review_minutes
-  + 0.2 * disk_gb_hours
-
-roi_score = gross_reward / max(resource_cost, 1)
-```
-
-Generated cron code may let users override weights, but it must not omit
-resource cost, bridge metric delta, reward class, and decision fields.
-
-Decision thresholds:
-
-```text
-roi_score >= 2.0:
-  continue_or_increase_budget
-1.0 <= roi_score < 2.0:
-  continue_with_same_budget
-0.3 <= roi_score < 1.0:
-  continue_only_if_bridge_priority_high
-roi_score < 0.3:
-  cooldown_or_pause
-roi_score <= 0 and no_reward_budget_exhausted:
-  paused_no_reward
-```
-
-## No-Reward Pause
-
-Each loop must maintain a no-reward accumulator.
-
-```json
-{
-  "loop_id": "LOOP-PRODUCT-BETA",
-  "no_reward": {
-    "attempts": 3,
-    "usd": 5.8,
-    "tokens": 420000,
-    "wall_clock_minutes": 190,
-    "human_review_minutes": 25
-  },
-  "last_reward_at": "2026-06-15T00:00:00Z",
-  "pause_threshold": {
-    "attempts": 4,
-    "usd": 8,
-    "human_review_minutes": 30
-  }
-}
-```
-
-Accumulator decay:
-
-- Primary reward clears the no-reward accumulator.
-- Secondary reward halves the no-reward accumulator.
-- Weak evidence reduces the accumulator by at most 20%.
-- Negative reward continues accumulation.
-
-When a threshold is reached:
-
-```text
-active -> paused_no_reward
-```
-
-The pause report must include:
-
-- pause reason
-- resource spent since last reward
-- missing reward signals
-- likely causes
-- resume conditions
-- required strategy changes for the next funded run
-
-Paused loops must not resume automatically.
-
-## Re-Funded Resume
-
-`paused_no_reward` can return to `eligible` only when a clear resume event exists:
+Paused loops must not resume automatically. `paused_no_reward` can return to
+`eligible` only when a clear resume event exists:
 
 - explicit resource refund by operator
 - new evidence arrived
@@ -392,56 +364,6 @@ Paused loops must not resume automatically.
 
 Resume must also change strategy. Same loop, same strategy, and no reward is
 forbidden.
-
-Minimum resume spec:
-
-```yaml
-resume_id: RESUME-PRODUCT-BETA-001
-loop_id: LOOP-PRODUCT-BETA
-reason: new_user_segment
-new_resource_envelope:
-  max_total_usd: 12
-  max_human_review_minutes: 60
-required_strategy_change:
-  - target_more_specific_segment
-  - record_friction_points
-  - stop_after_defined_nonresponse_limit
-expected_reward:
-  - at_least_one_metric_delta
-  - at_least_one_price_or_usage_signal
-```
-
-## State Machine
-
-Loop state:
-
-```text
-draft
-  -> eligible
-  -> active
-  -> cooling_down
-  -> paused_no_reward
-  -> paused_budget_exhausted
-  -> paused_missing_validator
-  -> paused_human_approval_required
-  -> retired_success
-  -> retired_invalidated
-```
-
-Runtime state:
-
-```text
-eligible
-  -> resource_check
-  -> lease_acquired
-  -> daemon_running
-  -> attempts_running
-  -> reward_accounting
-  -> roi_decision
-  -> continue / cooldown / pause / retire / split
-```
-
-Reward accounting must happen before the next resource lease is granted.
 
 ## Concurrency Model
 
@@ -460,15 +382,18 @@ Master Integration Cursor:
 
 Required scheduler order:
 
-1. Read authoritative blueprint, bridge metrics, loop ledgers, and resource ledgers.
-2. Release expired leases and dead daemons.
-3. Cheaply refresh finished attempt state.
-4. Refill normal DAG workers first so core implementation does not starve.
-5. Rank eligible loops by bridge priority, ROI, reward recency, and urgency.
-6. Allocate leases through the resource broker.
-7. Start or wake loop daemons.
-8. Defer heavy ROI reports until after worker refill or behind an explicit refresh flag.
-9. Let the master lane integrate validated candidates in DAG order.
+1. Read authoritative blueprint, bridge surfaces, bridge signals, loop ledgers,
+   and resource ledgers.
+2. Process pending operator signals.
+3. Release expired leases and dead daemons.
+4. Cheaply refresh finished attempt state.
+5. Refill normal DAG workers first so core implementation does not starve.
+6. Rank eligible loops by bridge priority, ROI, reward recency, and urgency.
+7. Allocate leases through the resource broker.
+8. Start or wake loop daemons.
+9. Defer heavy ROI reports until after worker refill or behind an explicit
+   refresh flag.
+10. Let the master lane integrate validated candidates in DAG order.
 
 High-concurrency rules:
 
@@ -479,22 +404,22 @@ High-concurrency rules:
 - Resource broker, not individual daemons, controls global concurrency.
 - Master lane resolves conflicts and writes accepted `[x]` marks.
 
-## Dual-Cursor Checklist State Protocol
+## Checklist State Protocol
 
-Looper must preserve b3ehive's existing checkbox grammar when attached to
-checklist items:
+Looper must preserve b3ehive's checkbox grammar when attached to checklist
+items:
 
 - `[ ]` means not done and still claimable.
 - `[_]` means worker self-tested or looper candidate exists, but master has not
   accepted it.
 - `[x]` means master accepted after validation and integration.
 
-Attempt workers and looper daemons may only create candidates or advance assigned
-work to `[_]`. They must never write `[x]`.
+Attempt workers and looper daemons may only create candidates or advance
+assigned work to `[_]`. They must never write `[x]`.
 
-Cleanup is forbidden while any attached item remains `[ ]` or `[_]`, or while
-any loop has live leases, unaccounted attempts, or a pending pause/resume
-decision.
+Cleanup is forbidden while any attached item remains `[ ]` or `[_]`, while any
+loop has live leases, while attempts are unaccounted, while nested runs are
+unfinished, or while a pause/resume/operator decision is pending.
 
 ## Runtime Files
 
@@ -502,7 +427,9 @@ Committed generic docs may live under:
 
 ```text
 Docs/looper/LOOP_SPEC.md
+Docs/looper/BRIDGE_SURFACES.md
 Docs/looper/BRIDGE_METRICS.md
+Docs/looper/BRIDGE_REPORT.md
 Docs/looper/ROI_REPORT.md
 ```
 
@@ -510,9 +437,16 @@ Private runtime files should be ignored and local:
 
 ```text
 .b3ehive/looper/loops.yaml
+.b3ehive/looper/bridge_surfaces.yaml
+.b3ehive/looper/bridge_signals.yaml
 .b3ehive/looper/bridge_metrics.yaml
+.b3ehive/looper/bridge_delta_ledger.jsonl
 .b3ehive/looper/resource_envelopes.json
 .b3ehive/looper/leases.json
+.b3ehive/looper/evidence_ledger.jsonl
+.b3ehive/looper/operator_signals.jsonl
+.b3ehive/looper/side_effect_decisions.jsonl
+.b3ehive/looper/nested_run_ledger.jsonl
 .b3ehive/looper/reward_ledger.jsonl
 .b3ehive/looper/roi_ledger.jsonl
 .b3ehive/looper/pause_ledger.jsonl
@@ -531,78 +465,41 @@ unless the user explicitly wants committed operational scaffolding.
 ## Agent Platform Compatibility
 
 Generated looper cron code must support Codex, Claude Code, opencode, OpenClaw,
-and Hermes through a single agent-runner abstraction.
-
-Default platform selection:
-
-- `B3EHIVE_AGENT_PLATFORM=codex` uses `codex exec`.
-- `B3EHIVE_AGENT_PLATFORM=claude` uses `claude -p`.
-- `B3EHIVE_AGENT_PLATFORM=opencode` uses `opencode run`.
-- `B3EHIVE_AGENT_PLATFORM=openclaw` uses `openclaw agent`.
-- `B3EHIVE_AGENT_PLATFORM=hermes` uses `hermes chat`.
-- `B3EHIVE_AGENT_PLATFORM=auto` may choose Codex, then Claude Code, then
-  opencode, then OpenClaw, then Hermes, based on installed CLIs.
-
-Default command templates:
-
-```bash
-# Codex
-codex exec --cd "$WORKER_REPO" --model "${CODEX_MODEL:-gpt-5.3-codex}" \
-  -c model_reasoning_effort="${CODEX_REASONING_EFFORT:-xhigh}" \
-  < "$PROMPT_FILE" > "$OUTPUT_FILE"
-
-# Claude Code
-claude -p --model "${CLAUDE_MODEL:-sonnet}" --effort "${CLAUDE_EFFORT:-max}" \
-  --permission-mode "${CLAUDE_PERMISSION_MODE:-auto}" \
-  --add-dir "$WORKER_REPO" < "$PROMPT_FILE" > "$OUTPUT_FILE"
-
-# opencode
-opencode run --dir "$WORKER_REPO" ${OPENCODE_MODEL:+--model "$OPENCODE_MODEL"} \
-  ${OPENCODE_VARIANT:+--variant "$OPENCODE_VARIANT"} \
-  ${OPENCODE_AGENT:+--agent "$OPENCODE_AGENT"} \
-  < "$PROMPT_FILE" > "$OUTPUT_FILE"
-
-# OpenClaw
-openclaw ${OPENCLAW_PROFILE:+--profile "$OPENCLAW_PROFILE"} agent --local \
-  ${OPENCLAW_AGENT:+--agent "$OPENCLAW_AGENT"} \
-  ${OPENCLAW_THINKING:+--thinking "$OPENCLAW_THINKING"} \
-  --message "$(cat "$PROMPT_FILE")" > "$OUTPUT_FILE"
-
-# Hermes
-hermes chat ${HERMES_MODEL:+--model "$HERMES_MODEL"} \
-  --toolsets "${HERMES_TOOLSETS:-skills,terminal}" \
-  ${HERMES_SKILLS:+-s "$HERMES_SKILLS"} \
-  -q "$(cat "$PROMPT_FILE")" > "$OUTPUT_FILE"
-```
-
-If `B3EHIVE_AGENT_RUNNER` is set, use it as the authoritative command template
-and print the resolved runner in validate-only output. Do not silently replace a
-requested model, service tier, permission mode, variant, profile, agent, toolset,
-or preloaded skill list.
+and Hermes through a single agent-runner abstraction. If
+`B3EHIVE_AGENT_RUNNER` is set, use it as the authoritative command template and
+print the resolved runner in validate-only output. Do not silently replace a
+requested model, service tier, permission mode, variant, profile, agent,
+toolset, or preloaded skill list.
 
 ## Workflow
 
-1. Inspect the repository and identify the intended bridge metrics, DAG nodes,
-   validators, and resource boundaries.
+1. Inspect the repository and identify the intended bridge surfaces, bridge
+   metrics, DAG nodes, validators, and resource boundaries.
 2. Confirm the loop is project-neutral if it will be committed. Move private
    names and local paths into ignored local config.
-3. Create or update `Docs/looper/LOOP_SPEC.md` and `Docs/looper/BRIDGE_METRICS.md`
-   with sanitized metrics and examples.
-4. Add private runtime ledgers under `.b3ehive/looper/` and `.cron/looper/`, then
-   hide them from git.
+3. Create or update `Docs/looper/LOOP_SPEC.md`,
+   `Docs/looper/BRIDGE_SURFACES.md`, and `Docs/looper/BRIDGE_METRICS.md` with
+   sanitized examples.
+4. Add private runtime ledgers under `.b3ehive/looper/` and `.cron/looper/`,
+   then hide them from git.
 5. Create the required pieces:
    - loop spec validator
-   - bridge metric reader
+   - bridge surface/signal reader
    - resource broker
    - lease allocator
+   - side-effect gate evaluator
+   - operator signal reader
    - looper guard
    - daemon runner
+   - nested run ledger
+   - compact evidence ledger
    - reward/ROI accountant
    - pause/resume ledger
    - cron space/log guard
    - installer and cleanup scripts
 6. Run `VALIDATE_ONLY=1` before installing cron. Validate spec shape, privacy
-   rules, metric shape, resource envelopes, leases, validators, and disk budgets.
+   rules, bridge shape, resource envelopes, leases, validators, and disk
+   budgets.
 7. Run one manual loop tick with a tiny resource envelope.
 8. Verify attempts can create candidates or `[_]` evidence only.
 9. Verify the master lane is the only actor that can accept `[x]`.
@@ -610,17 +507,28 @@ or preloaded skill list.
     privacy scan pass.
 11. Pause loops automatically when no-reward thresholds are hit.
 12. Resume paused loops only with explicit refund and required strategy change.
-13. Clean up only when no live leases, no pending attempts, no unfinished attached
-    checklist items, and no pending pause/resume decisions remain.
+13. Clean up only when no live leases, no pending attempts, no unfinished
+    nested runs, no unfinished attached checklist items, and no pending
+    pause/resume/operator decisions remain.
 
 ## Validation
 
 Before declaring a Looper ready:
 
-- validate YAML/JSON syntax for loop specs, bridge metrics, envelopes, and leases
-- verify every loop has at least one bridge metric or DAG node attachment
+- validate YAML/JSON syntax for loop specs, bridge surfaces, bridge signals,
+  metrics, envelopes, leases, and ledgers
+- verify every loop has at least one bridge surface, bridge metric, or DAG node
+  attachment
+- verify every BridgeSurface has `bridge_level` and `evidence_policy`
+- verify every BridgeSignal has `signal_type` and `failure_signal`
+- verify every BridgeDelta has `before_ref` and `after_ref`
 - verify every loop has a validator or an explicit monitoring evidence source
 - verify every attempt requires a resource lease
+- verify every nested run has `ParentLeaseRef`
+- verify nested run spend rolls into parent lease accounting
+- verify pending operator signals are processed before new leases
+- verify protected side effects have gate decisions
+- verify reward candidates point to compact evidence records
 - verify no-reward accumulator thresholds exist
 - verify ROI ledger fields exist
 - verify paused loops cannot resume without refund and strategy change
@@ -628,21 +536,23 @@ Before declaring a Looper ready:
 - verify master integration gate is documented
 - run the cron space guard once
 - run `bash -n` on generated shell helpers
-- run a privacy scan for local absolute paths and private names before committing
-
-Recommended privacy scan patterns:
-
-```bash
-rg -n -i '(absolute home path|private repo|customer|secret|api[_-]?key|token|password)' .
-```
-
-Add any project-specific private names to a local-only denylist before publishing
-or pushing public skill changes.
+- run a privacy scan for local absolute paths and private names before
+  committing
 
 ## Common Failure Modes
 
 - adding feedback edges directly to the DAG and creating cycles
+- treating `BridgeMetric` as the only bridge type
+- recording bridge movement without before/after refs
+- counting bridge deltas as reward before master classification
 - starting attempts without resource leases
+- letting nested compete, learn, execution, or optimization runs escape parent
+  lease accounting
+- letting paused loops start nested runs
+- allowing workers to mutate protected authoritative surfaces
+- treating operator cancel or drain as best-effort instead of authoritative
+  loop state
+- using full transcript review when compact evidence would suffice
 - treating no-reward attempts as harmless retries
 - resuming a paused loop with the same strategy and fresh budget only
 - measuring token spend but not human review time or disk/log pressure
@@ -650,5 +560,28 @@ or pushing public skill changes.
 - allowing daemon workers to write `[x]`
 - letting heavy ROI reporting block worker refill
 - committing private metric names, local paths, or customer identifiers
-- leaving paused loops undocumented so the operator cannot decide whether to
-  refund, change strategy, or retire the loop
+
+## What Not To Add By Default
+
+- plan-understanding quizzes
+- draft relevance checkers
+- read validators
+- full transcript compliance judges
+- dense prompt-template validators
+- hook chains around every operation
+- separate memory-loop subsystem
+- new public bridge or memory skill
+
+If a project explicitly needs one of these, model it as a project-specific
+validator or side-effect gate under an existing loop, not as core looper
+machinery.
+
+## References
+
+Read only the relevant reference:
+
+- `references/looper-pattern.md` for the full pattern and runtime examples.
+- `references/bridge-control.md` for BridgeSurface, BridgeSignal, BridgeDelta,
+  SideEffectGate, OperatorSignal, NestedRunLedger, ParentLeaseRef, and
+  EvidenceLedger.
+- `references/privacy-checklist.md` for publication hygiene.

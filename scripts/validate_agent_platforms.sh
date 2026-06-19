@@ -6,9 +6,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILLS=(
   compete-cron-builder
   execution-cron-builder
-  research-cron-builder
+  learn-cron-builder
   optimization-cron-builder
-  migration-cron-builder
   looper-cron-builder
 )
 

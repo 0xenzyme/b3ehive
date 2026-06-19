@@ -29,10 +29,9 @@ b3ehive 把这个思想搬到了 AI Agent 的工作中：让 Agent 把问题拆�
 
 - **难以决策或需要覆盖** → 需要 **compete**（proposal competition / coverage union）
 - **长期实现** → 需要**执行**（execution）
-- **未知代码库** → 需要**研究**（research）
+- **未知代码库 / source-to-target 转换 / 翻译** → 需要 **learn**
 - **成熟系统** → 需要**优化**（optimization）
-- **跨语言/跨工具迁移** → 需要**迁移**（migration）
-- **重复反馈 / 指标桥接** → 需要**资源感知循环**（looper）
+- **重复反馈 / bridge surface / 指标桥接** → 需要**资源感知 bridge controller**（looper）
 
 b3ehive 不是代码生成器，而是**按科学方法组织的集体工作**：观察地面 → 选择组织形态 → 运行有边界的循环 → 诚实验证 → 留下证据。
 
@@ -50,16 +49,15 @@ Blueprint 是 b3ehive 工作流的**唯一权威需求源**，是整个蜂群的
 
 ---
 
-## 三、六大 Skill 速查
+## 三、五大 Skill 速查
 
 | Skill | 核心能力 | 输入 | 输出 |
 |---|---|---|---|
 | `compete-cron-builder` | 多 proposal 竞争、选优、合并或修复队列 | 一个局部问题 + n/m/k 预算 | selected candidates、coverage union、repair queue 或 blueprint synthesis |
 | `execution-cron-builder` | 按蓝图持续执行代码 | 一个 Blueprint | 逐项实现的代码 + checkpoint 提交 |
-| `research-cron-builder` | 代码库研究 | 一个代码仓库 | 每份源码对应的研究文档 |
+| `learn-cron-builder` | 源到目标学习：understand / transform / translate | source scope + subset + target contract | learning notes、transformed artifacts、translations、traceability |
 | `optimization-cron-builder` | 架构优化研究 | 设计理念 + 阶段蓝图 | 每项优化的研究文档 |
-| `migration-cron-builder` | 产物契约迁移 | Source Contract + Target Contract | 迁移后的目标产物 |
-| `looper-cron-builder` | 资源感知反馈循环 | Bridge Metric + Resource Envelope + Validator | loop daemon、reward/ROI ledger、暂停/恢复策略 |
+| `looper-cron-builder` | 资源感知 bridge controller | BridgeSurface / BridgeMetric + ResourceEnvelope + SideEffectGate + Validator | bridge delta、compact evidence、reward/ROI ledger、暂停/恢复策略 |
 
 ---
 

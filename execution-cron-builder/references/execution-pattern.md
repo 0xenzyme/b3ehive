@@ -223,6 +223,23 @@ Every scheduler tick must call a bounded cleanup helper before `tmux` or selecte
 - After every recovery sync, verify local HEAD equals upstream HEAD before spawning workers.
 - Treat a successful push plus failed local sync as blocked, not successful.
 
+## Looper Embedding
+
+When looper invokes execution as a nested repair or implementation attempt:
+
+- require an active parent `ResourceLease`
+- write a `ParentLeaseRef`
+- record the run in the looper `NestedRunLedger`
+- keep execution output provisional until master acceptance
+- never let the nested execution run write `[x]`
+- roll token, wall-clock, human-review, disk, diff, and validation costs into
+  parent no-reward accounting
+- stop immediately if the parent loop is paused, drained, cancelled, or lacks
+  budget
+
+Nested execution may create repair child items or implementation candidates, but
+the parent looper attempt owns final reward classification and ROI.
+
 ## Lock leak recovery
 
 - Symptom: repeated `skip: previous run still active` with no corresponding live scheduler workload.

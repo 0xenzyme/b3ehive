@@ -9,8 +9,10 @@ operator-specific evidence directories in committed skill docs.
 ## Best-Practice Pattern
 
 1. Keep the authoritative DAG acyclic.
-2. Define bridge metrics as measurable validation surfaces.
-3. Attach LoopSpecs to bridge metrics, DAG nodes, or both.
+2. Define bridge surfaces and bridge signals. Use bridge metrics when the
+   signal is numeric.
+3. Attach LoopSpecs to bridge surfaces, bridge metrics, DAG nodes, or all
+   three.
 4. Allocate a ResourceEnvelope before a loop can become eligible.
 5. Allocate a ResourceLease before each daemon activation or attempt worker.
 6. Run attempts in isolated workspaces with declared path scopes.
@@ -18,7 +20,7 @@ operator-specific evidence directories in committed skill docs.
 8. Compute ROI before issuing the next lease.
 9. Pause loops when no-reward resource thresholds are reached.
 10. Resume paused loops only after explicit refund and strategy change.
-11. Let loop daemons produce candidates or `[_]` evidence only.
+11. Let loop attempts produce candidates or `[_]` evidence only.
 12. Let the master lane validate and accept `[x]` in DAG order.
 
 ## Three-Cursor Model
@@ -26,7 +28,7 @@ operator-specific evidence directories in committed skill docs.
 Looper adds a loop-attempt cursor to the existing worker/master pattern:
 
 - DAG claim cursor fills normal worker lanes from `[ ]` items.
-- Loop attempt cursor fills loop daemon lanes from eligible loops with resource
+- Loop attempt cursor fills attempt lanes from eligible loops with resource
   envelopes.
 - Master integration cursor validates `[_]` outputs and looper candidates in DAG
   dependency order.
@@ -34,7 +36,20 @@ Looper adds a loop-attempt cursor to the existing worker/master pattern:
 Worker refill should happen before heavy ROI reporting so feedback loops do not
 starve the main execution surface.
 
-## Bridge Metric Examples
+## Bridge Surface And Metric Examples
+
+Use bridge surfaces for the level of state the loop is trying to move:
+
+```text
+context
+handoff
+memory
+artifact
+blueprint
+strategy
+metric
+identity
+```
 
 Use neutral metric names:
 
@@ -52,7 +67,7 @@ workflow_automation_success_count
 ```
 
 Do not use private product names, customer names, local repo names, or personal
-strategy document names in committed metrics.
+strategy document names in committed surfaces or metrics.
 
 ## No-Reward Pause
 
@@ -77,9 +92,16 @@ Prefer these generic local paths:
 
 ```text
 .b3ehive/looper/loops.yaml
+.b3ehive/looper/bridge_surfaces.yaml
+.b3ehive/looper/bridge_signals.yaml
 .b3ehive/looper/bridge_metrics.yaml
+.b3ehive/looper/bridge_delta_ledger.jsonl
 .b3ehive/looper/resource_envelopes.json
 .b3ehive/looper/leases.json
+.b3ehive/looper/evidence_ledger.jsonl
+.b3ehive/looper/operator_signals.jsonl
+.b3ehive/looper/side_effect_decisions.jsonl
+.b3ehive/looper/nested_run_ledger.jsonl
 .b3ehive/looper/reward_ledger.jsonl
 .b3ehive/looper/roi_ledger.jsonl
 .b3ehive/looper/pause_ledger.jsonl
@@ -101,4 +123,9 @@ committed under `Docs/looper/`.
 - accepting `[x]` from daemon workers
 - ROI ledgers that track spend but not reward
 - bridge metrics that are vague slogans instead of measurable signals
+- bridge surfaces without evidence policy
+- bridge deltas without before/after refs
+- nested b3ehive runs without `ParentLeaseRef`
+- protected side effects without gate decisions
+- operator drain/cancel signals treated as best-effort instead of authoritative
 - committed examples that reveal private project names or local paths

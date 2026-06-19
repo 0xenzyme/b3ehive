@@ -55,8 +55,11 @@ They may never write `[x]`.
 
 ## Looper Handoff
 
-Compete inside looper attempts requires an active `ResourceLease`. Cost and
-reward must be recorded before another lease is issued.
+Compete inside looper attempts requires an active `ResourceLease` and a
+`ParentLeaseRef`. Cost rolls into the parent lease before another lease is
+issued. Candidate outputs are provisional, cannot write `[x]`, and produce
+reward candidates only; the parent looper attempt owns reward classification
+and no-reward accounting.
 
 ## Common Failure Modes
 
@@ -65,5 +68,7 @@ reward must be recorded before another lease is issued.
 - selecting one report for coverage work instead of unioning all valid findings
 - letting a candidate write `[x]`
 - running a looper competition without a lease
+- running a looper competition without `ParentLeaseRef`
+- letting nested candidate costs escape parent no-reward accounting
 - treating `[_]` as complete
 - allowing heavy union/ROI work to block normal execution worker refill

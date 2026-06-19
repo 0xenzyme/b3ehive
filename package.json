@@ -1,9 +1,9 @@
 {
   "name": "b3ehive",
   "slug": "b3ehive",
-  "displayName": "b3ehive - Six Swarm Algorithms",
+  "displayName": "b3ehive - Five Swarm Algorithms",
   "version": "1.5.0",
-  "description": "A hive of six Codex, Claude Code, opencode, OpenClaw, and Hermes compatible agent swarm skills: compete, execution, research, optimization, migration, and looper cron builders.",
+  "description": "A hive of five Codex, Claude Code, opencode, OpenClaw, and Hermes compatible agent swarm skills: compete, execution, learn, optimization, and looper cron builders.",
   "author": "weiyangzen",
   "license": "MIT",
   "homepage": "https://github.com/weiyangzen/b3ehive",
@@ -28,8 +28,9 @@
     "collaboration",
     "swarm-intelligence",
     "cron-builder",
-    "migration",
-    "research",
+    "learn",
+    "transform",
+    "translate",
     "optimization",
     "looper",
     "roi",
@@ -47,9 +48,8 @@
     "templates/",
     "compete-cron-builder/",
     "execution-cron-builder/",
-    "research-cron-builder/",
+    "learn-cron-builder/",
     "optimization-cron-builder/",
-    "migration-cron-builder/",
     "looper-cron-builder/",
     "docs/",
     "SKILL.md",
@@ -73,9 +73,8 @@
     "skills": [
       "compete-cron-builder",
       "execution-cron-builder",
-      "research-cron-builder",
+      "learn-cron-builder",
       "optimization-cron-builder",
-      "migration-cron-builder",
       "looper-cron-builder"
     ],
     "installRoot": "~/.codex/skills"
@@ -84,9 +83,8 @@
     "skills": [
       "compete-cron-builder",
       "execution-cron-builder",
-      "research-cron-builder",
+      "learn-cron-builder",
       "optimization-cron-builder",
-      "migration-cron-builder",
       "looper-cron-builder"
     ],
     "installRoot": "~/.claude/skills"
@@ -95,9 +93,8 @@
     "skills": [
       "compete-cron-builder",
       "execution-cron-builder",
-      "research-cron-builder",
+      "learn-cron-builder",
       "optimization-cron-builder",
-      "migration-cron-builder",
       "looper-cron-builder"
     ],
     "installRoot": "~/.config/opencode/skills"
@@ -106,9 +103,8 @@
     "skills": [
       "compete-cron-builder",
       "execution-cron-builder",
-      "research-cron-builder",
+      "learn-cron-builder",
       "optimization-cron-builder",
-      "migration-cron-builder",
       "looper-cron-builder"
     ],
     "installRoot": "~/.hermes/skills"

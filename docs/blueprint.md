@@ -121,10 +121,9 @@ Blueprint 是**权威源**，每日 todo 是它的**只读派生视图**：
 | Skill | Blueprint 的具体形态 |
 |---|---|
 | `execution-cron-builder` | 一个 Markdown 文件，里面有散文式需求描述 + checklist 段落。cron 按 checklist 逐项实现代码。 |
-| `research-cron-builder` | 生成的 `blueprint_checklist.md`，从仓库树扫描而来，每个源码文件对应一个研究任务。 |
+| `learn-cron-builder` | 生成 `learn_checklist.md`，从锁定 source manifest 派生；可做 code→human understand、code→code transform、human→human translate。 |
 | `optimization-cron-builder` | `Stage_*_AR_Blueprint.md`，从设计理念推导出的架构优化清单，每项对应一篇研究文档。 |
 | `compete-cron-builder` | blueprint 是一个局部 `question_type`。也可用于 execution choice、coverage union、repair queue、SEO strategy 等局部竞争。 |
-| `migration-cron-builder` | 核心文档是 `MIGRATION_SPEC.md`，属于 blueprint 的"迁移泛化"：用 source→target contract 替代 blueprint。 |
 
 ---
 

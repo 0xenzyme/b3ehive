@@ -59,3 +59,17 @@ Every optimization guard tick must run a bounded cleanup helper before launching
 - docs marked complete even though they ignore the design philosophy
 - cron artifacts left behind after completion
 - unbounded worker logs or stale workspaces consuming local disk
+
+## Looper Embedding
+
+When looper invokes optimization for strategy or blueprint bridge refinement:
+
+- require an active parent `ResourceLease`
+- write a `ParentLeaseRef`
+- record the run in the looper `NestedRunLedger`
+- attach output to a `BridgeSurface` with `bridge_level=strategy` or
+  `bridge_level=blueprint`
+- keep outputs provisional until master acceptance
+- never write `[x]` from the nested optimization run
+- roll token, wall-clock, human-review, disk, and output costs into parent
+  no-reward accounting

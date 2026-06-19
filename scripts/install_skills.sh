@@ -6,21 +6,22 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILLS=(
   compete-cron-builder
   execution-cron-builder
-  research-cron-builder
+  learn-cron-builder
   optimization-cron-builder
-  migration-cron-builder
   looper-cron-builder
 )
 
 DEPRECATED_SKILLS=(
   debating-cron-builder
+  research-cron-builder
+  migration-cron-builder
 )
 
 usage() {
   cat <<'USAGE'
 Usage: scripts/install_skills.sh [--target codex|claude|opencode|openclaw|hermes|both|all] [--scope user|project] [--project-dir PATH] [--dry-run]
 
-Installs b3ehive's six portable SKILL.md directories for Codex, Claude Code, opencode, OpenClaw, Hermes, or all supported targets.
+Installs b3ehive's five portable SKILL.md directories for Codex, Claude Code, opencode, OpenClaw, Hermes, or all supported targets.
 
 Defaults:
   --target all
