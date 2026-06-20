@@ -12,6 +12,30 @@ Default gate posture is strict: no mock completion, and no upper-layer completio
 Default commit posture is code-first: never commit cron/private artifacts, never commit tests from automation batches, and keep docs commits less than or equal to code commits per batch.
 Default orchestration posture is split-lane DAG aware: tmux workers claim implementation work in DAG/topological order up to the user-requested max concurrency, while the main session integrates, validates, and closes work strictly in DAG dependency order with conflict and completion gates enforced.
 
+## Shared b3ehive Contract
+
+For route selection, estimator decisions, nested calls, evidence handoff,
+looper_log capture, ROI, and self-evolution behavior, follow the suite contract
+in `../looper-cron-builder/references/b3ehive-bridge-contract.md`.
+
+Key local obligations:
+
+- Execution advances the target object through the DAG; worker output is `[_]`
+  and only the master/integration lane writes `[x]`.
+- Auto batch size, worker count, split threshold, validator choice, route, and
+  nested skill selection should leave `EstimatorPolicy` and `RouteDecision`
+  evidence when nontrivial.
+- Emit `looper_log` when execution exposes repeated validator failure, DAG
+  split friction, worker prompt/root mismatch, integration bottleneck, stale
+  scaffolding, hook/guard overreach, route waste, or tool integration friction.
+- Each `looper_log` must identify the `TargetObject` being implemented or
+  integrated and the `InstrumentObject` that produced the signal: DAG split,
+  worker batch, validator, guard, route, scaffold, tool, or skill composition.
+- Looper logs are evidence/backlog for improving the instrument set; they must
+  not block normal worker refill unless the issue is a hard safety gate.
+- A looper-log-derived change to execution policy, guards, scaffolds, or skill
+  text requires EvidenceLint, ROI, ParetoGate, rollback, and master `[x]`.
+
 ## Dual-Cursor Checklist State Protocol
 
 All execution checklists and generated todos must use exactly these three
@@ -447,6 +471,14 @@ patches, but they cannot write `[x]` or escape parent lease budget.
 The parent looper attempt owns final reward classification, no-reward
 accounting, and ROI. Execution outputs remain provisional until the master lane
 integrates them in DAG order and validates the authoritative checkout.
+
+Nested execution should emit `looper_log` refs when implementation attempts
+teach something about the instrument set: bad batch grain, missing validator,
+worker/root confusion, integration bottleneck, route mismatch, guard friction,
+or scaffold/tool weakness.
+The log should separate target feedback from instrument feedback so later
+review can tell whether the implementation item was hard or the execution
+machinery needs adjustment.
 
 ## Validation
 

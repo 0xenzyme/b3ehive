@@ -12,6 +12,7 @@ SKILLS=(
 )
 
 DEPRECATED_SKILLS=(
+  debate-cron-builder
   debating-cron-builder
   research-cron-builder
   migration-cron-builder

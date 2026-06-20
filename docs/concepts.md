@@ -20,7 +20,7 @@ b3ehive 把这个思想搬到了 AI Agent 的工作中：让 Agent 把问题拆�
 
 | 传统 AI 助手 | b3ehive |
 |---|---|
-| 一个助手，一种形态 | **六种蜂群组织形态** |
+| 一个助手，一种形态 | **五种蜂群组织形态** |
 | Prompt In → Answer Out | **Checklist → Worker → Validator → Cleanup** |
 | 隐藏状态 | **可检查的 Spec、Todo、Log、Artifact** |
 | "看起来完成了" | **通过验证门，才能 Checkpoint** |
@@ -32,6 +32,11 @@ b3ehive 把这个思想搬到了 AI Agent 的工作中：让 Agent 把问题拆�
 - **未知代码库 / source-to-target 转换 / 翻译** → 需要 **learn**
 - **成熟系统** → 需要**优化**（optimization）
 - **重复反馈 / bridge surface / 指标桥接** → 需要**资源感知 bridge controller**（looper）
+
+`LooperLog` 是 looper 内部的多粒度反馈证据面，用来记录 `TargetObject`
+movement 和 `InstrumentObject` quality。正常执行推进任务对象；looper 同时
+观察 skills/scaffolds/tools/routes/validators/scripts/ledgers 是否帮助、阻塞、
+浪费或验证不足。它不是第六个 public skill，也不是运行时自动改 skill 的入口。
 
 b3ehive 不是代码生成器，而是**按科学方法组织的集体工作**：观察地面 → 选择组织形态 → 运行有边界的循环 → 诚实验证 → 留下证据。
 

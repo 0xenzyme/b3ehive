@@ -11,7 +11,7 @@ semantic scaffolding by default. Let the model handle relevance, fuzzy scope,
 strategy writing, bridge writing, failure explanation, and handoff synthesis.
 Looper owns resources, leases, concurrency, side effects, evidence, reward
 classification, ROI, pause/resume, operator signals, nested spend attribution,
-and master-only acceptance.
+multi-grain looper logs, and master-only acceptance.
 
 ## Bridge Levels
 
@@ -37,8 +37,8 @@ Definitions:
   state.
 - `handoff`: cross-session continuation files, summaries, next actions, claim
   state, and transfer notes.
-- `memory`: durable facts, lessons, long-term notes, or stable operating
-  knowledge.
+- `memory`: durable facts, long-term notes, stable operating knowledge, or
+  recurring looper_log clusters.
 - `artifact`: code, docs, tests, configs, generated outputs, skill files, and
   reports.
 - `blueprint`: authoritative plan, checklist, DAG, manifest, target contract,
@@ -55,7 +55,7 @@ Rules:
 - Bridge level is descriptive; it does not create a new workflow.
 - A loop may attach to multiple bridge surfaces.
 - A bridge surface may use qualitative or quantitative evidence.
-- Memory is a bridge level, not a separate public subsystem.
+- Durable feedback is a bridge level, not a separate public subsystem.
 - Identity-level changes require explicit master approval.
 
 ## BridgeSurface
@@ -165,6 +165,8 @@ Reward mapping:
   paid/user signal, completed benchmark, or accepted operational improvement.
 - Secondary reward: validator added, failure cause classified, scope narrowed,
   reusable workflow captured, bridge route clarified, or actionable handoff.
+- Instrument reward: accepted improvement to a skill, scaffold, validator,
+  route policy, or tool adapter after looper_log clustering and master gate.
 - Weak evidence: plausible insight, better hypothesis, or cleaner handoff with
   no accepted movement yet.
 - Negative reward: non-reproducible output, unsupported claim, abstract summary
@@ -324,6 +326,7 @@ Example `NestedRunLedger` row:
     "Docs/learn/subsets/scheduler/summary.md"
   ],
   "reward_candidate": "failure_cause_classified",
+  "looper_log_refs": ["LLOG-0004"],
   "master_status": "pending"
 }
 ```
@@ -336,6 +339,8 @@ Rules:
 - Parent attempt owns final reward accounting.
 - No-reward accounting includes nested run cost.
 - Paused loops cannot start nested runs.
+- Nested runs should create looper_log refs when they expose route, depth,
+  validator, scaffold, tool, or cost/reward feedback about the instrument set.
 
 ## EvidenceLedger
 
@@ -357,6 +362,7 @@ Example:
   "bridge_delta_refs": ["DELTA-0007"],
   "side_effect_decisions": ["SIDE-0003"],
   "nested_run_refs": ["LEARN-SUBSET-0004"],
+  "looper_log_refs": ["LLOG-0004"],
   "reward_candidates": ["accepted_patch", "failure_cause_classified"],
   "master_decision": "pending"
 }
@@ -369,6 +375,80 @@ Rules:
 - It must point to raw logs or outputs when needed.
 - It must not leak secrets or private paths into committed reports.
 
+## LooperLog
+
+Use `LooperLog` for feedback evidence about both the `TargetObject` and the
+`InstrumentObject` used to work on it.
+
+```text
+TargetObject = task, DAG item, artifact, repo change, report, benchmark, or product signal being moved
+InstrumentObject = skill, skill composition, scaffold, validator, route, ledger, script, or tool used to move it
+```
+
+Normal execution may change the `TargetObject` inside the task boundary.
+Runtime may only log evidence about the `InstrumentObject`. Accepted
+instrument changes need their own `[ ]` -> `[_]` -> `[x]` lifecycle.
+
+Grains:
+
+```text
+micro
+skill
+composition
+scaffold
+tool
+task
+```
+
+Minimum row:
+
+```yaml
+looper_log:
+  log_id: LLOG-0001
+  grain: micro | skill | composition | scaffold | tool | task
+  target_object:
+    kind: dag_item | artifact | repo_change | report | route_decision | validator | skill | scaffold | tool
+    ref: ITEM-123
+    desired_movement: accepted target movement with evidence
+    evidence_policy:
+      - evidence_ref
+      - validator_output_ref
+      - master_decision_ref
+  instrument_set:
+    skills: []
+    scaffolds: []
+    tools: []
+  instrument_object:
+    kind: skill | skill_composition | scaffold | validator | route | ledger | script | tool | coding_interface
+    ref: route-or-tool-or-skill-ref
+    intended_role: how it should move the target object
+    observed_effect: helped | neutral | blocked | wasted | under-validated | over-complicated
+    change_authority: evidence_only | backlog_candidate | accepted_patch
+  route_refs: []
+  estimator_refs: []
+  evidence_refs: []
+  outcome:
+    master_state: "[_]"
+    reward_class: primary | secondary | weak | negative | none
+  target_feedback:
+    movement: []
+    remaining_risk: []
+  instrument_feedback:
+    helped: []
+    harmed: []
+    missing: []
+  improvement_suggestions: []
+  future_backlog_state: "[ ]"
+```
+
+Rules:
+
+- LooperLog is evidence/backlog, not accepted policy.
+- Most looper logs remain `[_]` until a later periodic review clusters them.
+- Accepted instrument changes require EvidenceLint, ROI, ParetoGate, rollback,
+  and master `[x]`.
+- Do not create a separate public skill for this log surface.
+
 ## Runtime Files
 
 Add these runtime files when the corresponding controls are used:
@@ -378,6 +458,7 @@ Add these runtime files when the corresponding controls are used:
 .b3ehive/looper/bridge_signals.yaml
 .b3ehive/looper/bridge_delta_ledger.jsonl
 .b3ehive/looper/evidence_ledger.jsonl
+.b3ehive/looper/looper_log.jsonl
 .b3ehive/looper/operator_signals.jsonl
 .b3ehive/looper/side_effect_decisions.jsonl
 .b3ehive/looper/nested_run_ledger.jsonl
@@ -401,6 +482,7 @@ zero unaccounted attempts
 zero pending side-effect decisions
 zero unfinished nested runs
 all required evidence ledger rows exist
+required looper_log rows exist when instrument feedback was observed
 bridge deltas are accepted or rejected
 reward accounting is complete
 ROI decision is recorded

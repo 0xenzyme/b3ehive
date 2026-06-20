@@ -38,6 +38,31 @@ source scope -> subset policy -> source manifest -> target contract
 -> worker output [_] -> master validation [x] -> cleanup
 ```
 
+## Shared b3ehive Contract
+
+For route selection, estimator decisions, nested calls, evidence handoff,
+looper_log capture, ROI, and self-evolution behavior, follow the suite contract
+in `../looper-cron-builder/references/b3ehive-bridge-contract.md`.
+
+Key local obligations:
+
+- `source_manifest.tsv` and one-to-one file plus folder coverage are hard
+  caps, not estimator choices.
+- Auto subset, route, batch, split, transform, or translate choices should
+  leave `EstimatorPolicy` and `RouteDecision` evidence when nontrivial.
+- Workers produce `[_]` artifacts only; only master validation may write `[x]`.
+- Emit `looper_log` when the run exposes coverage gaps, fuzzy subset ambiguity,
+  manifest friction, route over/under-spend, translation route mismatch,
+  transform traceability friction, scaffold weaknesses, or tool integration
+  friction.
+- Each `looper_log` must identify the `TargetObject` being understood,
+  transformed, or translated and the `InstrumentObject` that produced the
+  signal: subset policy, manifest, route, traceability scaffold, validator,
+  tool, or skill composition.
+- A looper-log-derived improvement may not alter coverage, route, transform,
+  or translation policy without EvidenceLint, ROI, ParetoGate, rollback, and
+  master `[x]`.
+
 ## Non-Negotiable Contract
 
 - Generate a locked `source_manifest.tsv` before workers claim items.
@@ -160,6 +185,8 @@ Before declaring a learn cron ready:
 - Validate transform outputs carry source-target traceability.
 - Validate translate outputs preserve headings, anchors, links, code blocks,
   tables, glossary decisions, and section parity.
+- Validate looper logs exist when the run produced instrument feedback at
+  micro, skill, composition, scaffold, tool, or task grain.
 - Run the cron space guard.
 - Run `bash -n` on generated shell helpers.
 
@@ -173,6 +200,13 @@ Nested learn runs cannot write `[x]`, cannot escape the parent lease budget,
 and produce reward candidates only. Their token, wall-clock, human-review,
 disk, and output costs roll into the parent looper attempt before reward and
 ROI accounting. Paused loops cannot start nested learn runs.
+
+Nested learn should emit `looper_log` refs when subset choice, manifest shape,
+one-to-one coverage, route, transform traceability, translation parity, or
+generated tooling creates reusable feedback for the instrument set.
+The log should separate target feedback from instrument feedback so later
+review can tell whether the source subset was hard or the learn machinery needs
+adjustment.
 
 ## References
 

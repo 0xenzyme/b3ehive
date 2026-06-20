@@ -12,6 +12,8 @@ required_skills=(
 )
 
 removed_skills=(
+  debate-cron-builder
+  debating-cron-builder
   research-cron-builder
   migration-cron-builder
 )
@@ -33,7 +35,9 @@ done
 if rg -n 'research-cron-builder|migration-cron-builder' \
   "${ROOT_DIR}/package.json" \
   "${ROOT_DIR}/scripts/validate_agent_platforms.sh" \
-  "${ROOT_DIR}/docs/agent-platforms.md" >/tmp/b3ehive-learn-active-scan.log; then
+  "${ROOT_DIR}/docs/agent-platforms.md" \
+  "${ROOT_DIR}/README.md" \
+  "${ROOT_DIR}/SKILL.md" >/tmp/b3ehive-learn-active-scan.log; then
   echo "ERROR: removed skill appears in active package/platform surfaces" >&2
   cat /tmp/b3ehive-learn-active-scan.log >&2
   exit 1

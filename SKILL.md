@@ -20,3 +20,32 @@ b3ehive provides five portable `SKILL.md` directories:
   BridgeSurfaces, BridgeMetrics, ResourceEnvelopes, ResourceLeases,
   SideEffectGates, OperatorSignals, nested run ledgers, compact evidence,
   reward ledgers, ROI, and no-reward pause.
+
+Shared invariants across all five skills:
+
+- `[ ]`, `[_]`, and `[x]` are the only authoritative acceptance states.
+- Runtime labels such as paused, cancelled, done, accepted, or finalized are
+  telemetry unless paired with the checkbox state.
+- Auto choices should use `EstimatorPolicy`; hardcoded values must be hard caps
+  for AI boundaries, safety, compatibility, or operator overrides.
+- Nontrivial skill selection, model/provider choice, and nested skill
+  composition should leave a `RouteDecision`.
+- Nested skill calls require route, lease, evidence, side-effect, depth, and ROI
+  controls; child skills cannot write `[x]`.
+- Evidence lint, not narrative confidence, gates acceptance.
+- `LooperLog` is the shared multi-grain feedback surface for `TargetObject`
+  movement and `InstrumentObject` quality across micro, skill, composition,
+  scaffold, tool, and task grains. It is evidence/backlog, not accepted policy
+  change.
+- Normal execution may change the target object inside the task boundary.
+  Instrument changes to skills, scaffolds, validators, routes, ledgers, scripts,
+  or tools require a separate `[ ]` -> `[_]` -> `[x]` improvement lifecycle.
+- Self-evolution requires EvidenceLint, ROI, ParetoGate, rollback, and master
+  `[x]`.
+- Prompt blocks, hooks, validators, and coding-tool glue are generated
+  engineering artifacts unless promoted by evidence; do not grow a prompt/hook
+  forest inside the five core skills.
+
+Read `looper-cron-builder/references/b3ehive-bridge-contract.md` for the shared
+contract when updating skills, generating coding-tool adapters, using nested
+skills, or designing route/evidence/looper_log/ROI/self-evolution behavior.

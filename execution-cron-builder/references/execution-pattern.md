@@ -193,7 +193,7 @@ Every scheduler tick must call a bounded cleanup helper before `tmux` or selecte
 - checking upper-layer items while finer layers still contain unchecked items
 - completion never cleaning up because the guard only validates and never exits
 - repeated empty no-op runs after blueprint completion
-- repeated real commits with zero checklist movement because the cron keeps hammering one non-closable cluster
+- repeated real commits with zero checklist movement because the cron keeps retrying one non-closable cluster
 - validate-only dry runs misread as execution ticks, so no workers are launched even though concurrency is available
 - repeated unresolved checklist items without automatic split into executable child items
 - todo DAG missing, stale, cyclic, or inconsistent with current unchecked blueprint items

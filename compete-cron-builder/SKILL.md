@@ -36,6 +36,29 @@ findings, validation hints, and handoff metadata. It must not mark execution
 checklist items `[x]`; only the execution or looper master lane may accept final
 completion.
 
+## Shared b3ehive Contract
+
+For nested calls, route selection, auto m/k decisions, evidence handoff,
+looper_log capture, ROI, and self-evolution behavior, follow the suite contract
+in `../looper-cron-builder/references/b3ehive-bridge-contract.md`.
+
+Key local obligations:
+
+- Auto `proposal_count`, `choose_count`, shape, selection, and route choices
+  should leave an `EstimatorPolicy` or `RouteDecision` record when the run is
+  nontrivial.
+- Candidate outputs are `[_]` evidence only; they never write `[x]`.
+- Coverage and audit runs use all-valid/risk union unless a stronger local
+  route decision says otherwise.
+- If a competition exposes route cost, missing validator, bad m/k, candidate
+  overlap, scaffold friction, or tool integration friction, emit a
+  `looper_log` at `skill`, `composition`, `scaffold`, `tool`, or `task` grain.
+- Each `looper_log` must identify the `TargetObject` being decided or covered
+  and the `InstrumentObject` that produced the signal: competition shape,
+  route, validator, scaffold, tool, or skill composition.
+- A looper-log-derived improvement may not mutate compete policy without
+  EvidenceLint, ROI, ParetoGate, rollback, and master `[x]`.
+
 ## Quick Start
 
 Run the fully covered old three-agent workflow with new compete terminology:
@@ -174,6 +197,13 @@ strategy change before resume.
 Nested compete runs cannot write `[x]`, cannot escape the parent lease budget,
 and produce reward candidates only. The parent looper attempt owns final reward
 classification and ROI accounting.
+
+Emit `looper_log` refs when the nested competition teaches something about the
+instrument set, such as excessive proposal overlap, wrong question type,
+unnecessary model route, missing validator, or inefficient repair queue shape.
+The log should separate target feedback from instrument feedback so later
+review can tell whether the task was hard or the competition machinery was
+misconfigured.
 
 ## Operating Rules
 

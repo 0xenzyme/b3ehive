@@ -11,6 +11,29 @@ Build a repository-local optimization pipeline that does not implement product c
 
 `AR` means `Architecture Refinement` here, but the pattern works for any stage-specific optimization blueprint.
 
+## Shared b3ehive Contract
+
+For route selection, estimator decisions, nested calls, evidence handoff,
+looper_log capture, ROI, and self-evolution behavior, follow the suite contract
+in `../looper-cron-builder/references/b3ehive-bridge-contract.md`.
+
+Key local obligations:
+
+- Optimization docs and AR items are `[_]` evidence until the owning master lane
+  accepts them.
+- Auto item count, worker grouping, route, research depth, and simplification
+  strategy should leave `EstimatorPolicy` and `RouteDecision` evidence when
+  nontrivial.
+- Emit `looper_log` when optimization finds recurring skill text bloat,
+  scaffold overdesign, validator/hook drift, prompt-block sprawl, route waste,
+  or tool integration friction.
+- Each `looper_log` must identify the `TargetObject` being refined and the
+  `InstrumentObject` that produced the signal: AR grain, design rule, route,
+  validator, scaffold, prompt/hook artifact, tool, or skill composition.
+- Optimization may propose simplification or instrument improvements, but a
+  looper-log-derived change to skill text, policy, scaffold, or tooling still
+  requires EvidenceLint, ROI, ParetoGate, rollback, and master `[x]`.
+
 ## Workflow
 
 1. Inspect the target repository and find the single authoritative blueprint source for the stage.
@@ -197,6 +220,13 @@ Nested optimization runs cannot write `[x]`, cannot escape parent lease budget,
 and produce reward candidates only. They should attach to a looper
 `BridgeSurface` with `bridge_level=strategy` or `bridge_level=blueprint`, and
 their output must change a real decision surface before it can count as reward.
+
+Nested optimization should emit `looper_log` refs when it identifies a reusable
+instrument improvement for skills, scaffolds, validators, prompt/hook
+engineering, route policy, or coding-tool adapters.
+The log should separate target feedback from instrument feedback so later
+review can tell whether the design target was hard or the optimization
+machinery needs simplification.
 
 ## Local References
 

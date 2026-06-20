@@ -24,6 +24,7 @@ Loop daemon = conditional feedback actor around a node, surface, or metric
 Resource broker = budget, lease, pause, and resume authority
 Side-effect gate = boundary around risky writes, spend, publish, or deletion
 Evidence ledger = compact fact index for audit and master acceptance
+Looper log = multi-grain feedback evidence for target work and operating instruments
 Reward ledger = classification that a bridge delta or artifact produced value
 Master lane = only actor allowed to accept final completion
 ```
@@ -38,6 +39,19 @@ strategy writing, bridge writing, failure explanation, and handoff synthesis.
 Looper owns resources, leases, concurrency, side effects, evidence, reward
 classification, ROI, pause/resume, operator signals, nested spend attribution,
 and master-only acceptance.
+
+Looper also owns the `LooperLog` surface. Every meaningful run may produce
+feedback for both:
+
+```text
+ObjectLoop: move the TargetObject toward accepted state [x].
+InstrumentLoop: record whether the InstrumentObject helped, blocked,
+over-spent, under-validated, or created friction.
+```
+
+The instrument loop may emit `looper_log` evidence `[_]` and backlog `[ ]`; it
+may not mutate accepted skill/tool/policy surfaces without EvidenceLint, ROI,
+ParetoGate, rollback, and master `[x]`.
 
 ## Privacy And Generalization
 
@@ -79,6 +93,9 @@ SideEffectGate
 OperatorSignal
 NestedRunLedger
 EvidenceLedger
+LooperLog
+TargetObject
+InstrumentObject
 RewardSignal
 ROILedger
 PauseResumePolicy
@@ -172,15 +189,23 @@ bridge_level =
 Rules:
 
 - `BridgeMetric` remains valid, but it is one bridge signal kind.
-- Memory is a bridge level, not a separate public subsystem.
+- Feedback and durable operating facts are bridge surfaces, not a separate
+  public subsystem.
 - Identity-level movement requires explicit master approval.
 - A `BridgeDelta` records before -> after movement; it is not automatically
   reward.
 - Reward classification and master acceptance happen after evidence exists.
+- `LooperLog` records feedback at `micro`, `skill`, `composition`, `scaffold`,
+  `tool`, or `task` grain. It is evidence/backlog, not accepted change.
 
 Read `references/bridge-control.md` when a loop uses non-metric bridge
 surfaces, side-effect gates, operator signals, nested skill attempts, or compact
 evidence ledgers.
+
+Read `references/b3ehive-bridge-contract.md` when a loop coordinates multiple
+b3ehive skills, needs `EstimatorPolicy`, `RouteDecision`, `EvidenceLint`,
+`NestedSkillCall`, `LooperLog`, ROI, ParetoGate, or coding-tool interface
+rules.
 
 ## Resources And Leases
 
@@ -297,12 +322,108 @@ Nested runs cannot write `[x]`, cannot escape the parent lease budget, and
 cannot claim accepted reward directly. They produce provisional outputs and
 reward candidates. Parent attempt accounting includes nested run cost.
 
+Nested runs should also attach `looper_log` refs when they expose reusable
+feedback about route choice, missing validators, scaffold friction, tool
+integration, nested depth, or cost/reward mismatch.
+
 ## EvidenceLedger
 
 Use compact evidence records, not full transcript adjudication. Each evidence
 record should name the loop, attempt, lease, input contract, owned paths,
 changed files, commands run, validation result, bridge delta refs, side-effect
 decisions, nested run refs, reward candidates, and master decision.
+
+## LooperLog
+
+Use looper logs for multi-grain feedback evidence. A log can attach to the
+smallest feedback ring that the LLM should not close by itself, or to the whole
+task episode.
+
+Each meaningful loop attempt has two observation lanes:
+
+```text
+TargetObject = the task, DAG item, artifact, repo change, report, benchmark, or product signal being moved
+InstrumentObject = the skill, skill composition, scaffold, validator, route, ledger, script, or tool used to move it
+```
+
+Normal execution may change the `TargetObject` within the task boundary. The
+`InstrumentObject` may only receive `looper_log` evidence and future backlog
+until a separate improvement lifecycle passes EvidenceLint, ROI, ParetoGate,
+rollback, and master `[x]`.
+
+Grains:
+
+```text
+micro
+skill
+composition
+scaffold
+tool
+task
+```
+
+Minimum fields:
+
+```yaml
+looper_log:
+  log_id: LLOG-0001
+  grain: micro | skill | composition | scaffold | tool | task
+  target_object:
+    kind: dag_item | artifact | repo_change | report | route_decision | validator | skill | scaffold | tool
+    ref: ITEM-123
+    desired_movement: accepted target movement with evidence
+    evidence_policy:
+      - evidence_ref
+      - validator_output_ref
+      - master_decision_ref
+  instrument_set:
+    skills: []
+    scaffolds: []
+    tools: []
+  instrument_object:
+    kind: skill | skill_composition | scaffold | validator | route | ledger | script | tool | coding_interface
+    ref: route-or-tool-or-skill-ref
+    intended_role: how it should move the target object
+    observed_effect: helped | neutral | blocked | wasted | under-validated | over-complicated
+    change_authority: evidence_only | backlog_candidate | accepted_patch
+  route_refs: []
+  estimator_refs: []
+  evidence_refs: []
+  outcome:
+    master_state: "[_]"
+    reward_class: primary | secondary | weak | negative | none
+  target_feedback:
+    movement: []
+    remaining_risk: []
+  instrument_feedback:
+    helped: []
+    harmed: []
+    missing: []
+  improvement_suggestions: []
+  future_backlog_state: "[ ]"
+```
+
+State semantics:
+
+```text
+[ ] improvement is only a future backlog candidate
+[_] looper_log exists with evidence, but no accepted policy/tool/skill change yet
+[x] master accepted and applied a real improvement
+```
+
+Many `[_]` logs should be batched later by periodic looper review. Recurring
+patterns may route to compete, optimization, execution patching, or master
+review. Accepted instrument changes still require EvidenceLint, ROI,
+ParetoGate, rollback, and master `[x]`.
+
+Runtime rule:
+
+```text
+Do the work.
+Observe the instruments used to do the work.
+Record instrument feedback as looper_log.
+Defer instrument mutation to a separate accepted improvement lifecycle.
+```
 
 ## Reward And ROI Accounting
 
@@ -444,6 +565,7 @@ Private runtime files should be ignored and local:
 .b3ehive/looper/resource_envelopes.json
 .b3ehive/looper/leases.json
 .b3ehive/looper/evidence_ledger.jsonl
+.b3ehive/looper/looper_log.jsonl
 .b3ehive/looper/operator_signals.jsonl
 .b3ehive/looper/side_effect_decisions.jsonl
 .b3ehive/looper/nested_run_ledger.jsonl
@@ -493,6 +615,7 @@ toolset, or preloaded skill list.
    - daemon runner
    - nested run ledger
    - compact evidence ledger
+   - multi-grain looper_log ledger
    - reward/ROI accountant
    - pause/resume ledger
    - cron space/log guard
@@ -529,6 +652,11 @@ Before declaring a Looper ready:
 - verify pending operator signals are processed before new leases
 - verify protected side effects have gate decisions
 - verify reward candidates point to compact evidence records
+- verify looper_log entries exist when attempts produce target or instrument
+  feedback at micro, skill, composition, scaffold, tool, or task grain
+- verify looper_log entries include TargetObject/target_feedback and
+  InstrumentObject/instrument_feedback when either side produced meaningful
+  evidence
 - verify no-reward accumulator thresholds exist
 - verify ROI ledger fields exist
 - verify paused loops cannot resume without refund and strategy change
@@ -557,6 +685,9 @@ Before declaring a Looper ready:
 - resuming a paused loop with the same strategy and fresh budget only
 - measuring token spend but not human review time or disk/log pressure
 - counting narrative summaries as reward without evidence
+- treating looper_log as accepted policy/tool/skill change
+- mutating an InstrumentObject during the same runtime attempt that first
+  observed the instrument feedback
 - allowing daemon workers to write `[x]`
 - letting heavy ROI reporting block worker refill
 - committing private metric names, local paths, or customer identifiers
@@ -569,8 +700,9 @@ Before declaring a Looper ready:
 - full transcript compliance judges
 - dense prompt-template validators
 - hook chains around every operation
-- separate memory-loop subsystem
-- new public bridge or memory skill
+- separate long-term feedback subsystem
+- separate looper-log public skill
+- new public bridge or feedback skill
 
 If a project explicitly needs one of these, model it as a project-specific
 validator or side-effect gate under an existing loop, not as core looper
@@ -584,4 +716,7 @@ Read only the relevant reference:
 - `references/bridge-control.md` for BridgeSurface, BridgeSignal, BridgeDelta,
   SideEffectGate, OperatorSignal, NestedRunLedger, ParentLeaseRef, and
   EvidenceLedger.
+- `references/b3ehive-bridge-contract.md` for shared state, EstimatorPolicy,
+  RouteDecision, NestedSkillCall, EvidenceLint, LooperLog, ROI, ParetoGate,
+  B3IR, anti-bloat, and prompt/hook boundary rules.
 - `references/privacy-checklist.md` for publication hygiene.
