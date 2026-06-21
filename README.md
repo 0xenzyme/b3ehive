@@ -75,6 +75,43 @@ Clone the whole hive:
 git clone https://github.com/weiyangzen/b3ehive.git
 ```
 
+### Codex Plugin
+
+b3ehive ships as a Codex plugin package under
+[`plugins/b3ehive`](plugins/b3ehive). The repo also includes a Codex marketplace
+catalog at [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json).
+
+From this repository checkout:
+
+```bash
+codex plugin marketplace add .
+codex plugin add b3ehive@b3ehive
+```
+
+From GitHub:
+
+```bash
+codex plugin marketplace add weiyangzen/b3ehive
+codex plugin add b3ehive@b3ehive
+```
+
+Start a new Codex thread after installing so the five bundled skills are loaded
+into the session:
+
+```text
+Use b3ehive to create an execution blueprint.
+Use b3ehive to compare routes and evidence.
+Use b3ehive looper for bounded ROI control.
+```
+
+When editing root skill directories, sync the plugin package before release:
+
+```bash
+scripts/sync_codex_plugin.sh
+```
+
+### Portable Skill Install
+
 Install all five skills for Codex, Claude Code, opencode, OpenClaw, and Hermes:
 
 ```bash

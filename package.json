@@ -43,9 +43,11 @@
     "b3ehive": "./bin/b3ehive"
   },
   "files": [
+    ".agents/",
     "bin/",
     "scripts/",
     "templates/",
+    "plugins/",
     "compete-cron-builder/",
     "execution-cron-builder/",
     "learn-cron-builder/",
@@ -54,6 +56,8 @@
     "docs/",
     "SKILL.md",
     "README.md",
+    "PRIVACY.md",
+    "TERMS.md",
     "LICENSE"
   ],
   "openclaw": {
