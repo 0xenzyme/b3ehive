@@ -1,5 +1,7 @@
 # Agent Platform Compatibility
 
+[中文](agent-platforms.zh-CN.md)
+
 b3ehive skills use the portable `SKILL.md` directory contract. The same skill
 directories can be installed for Codex, Claude Code, opencode, OpenClaw, and Hermes without
 maintaining separate copies of the skill body.
