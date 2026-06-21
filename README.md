@@ -1,5 +1,7 @@
 # b3ehive
 
+[中文](README.zh-CN.md)
+
 [![Codex Skill](https://img.shields.io/badge/Codex-Skill-blue)](https://github.com/openai/codex)
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-orange)](https://docs.anthropic.com/en/docs/claude-code)
 [![opencode Skill](https://img.shields.io/badge/opencode-Skill-green)](https://opencode.ai)
@@ -80,6 +82,8 @@ git clone https://github.com/weiyangzen/b3ehive.git
 b3ehive ships as a Codex plugin package under
 [`plugins/b3ehive`](plugins/b3ehive). The repo also includes a Codex marketplace
 catalog at [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json).
+The plugin usage, maintenance, and release contract is documented in
+[docs/codex-plugin.md](docs/codex-plugin.md).
 
 From this repository checkout:
 
@@ -192,6 +196,11 @@ accept `skills/<skill>/SKILL.md`.
 - [optimization-cron-builder](optimization-cron-builder/SKILL.md) — design-guided optimization cron
 - [looper-cron-builder](looper-cron-builder/SKILL.md) — resource-aware bridge controller cron
 - [SKILL.md](SKILL.md) — b3ehive skill index and removed-tool cleanup note
+- [plugins/b3ehive](plugins/b3ehive/README.md) — Codex plugin package containing the five bundled skills
+- [docs/README.md](docs/README.md) — documentation index and multilingual conventions
+- [docs/concepts.md](docs/concepts.md) — core b3ehive concepts
+- [docs/blueprint.md](docs/blueprint.md) — blueprint contract and lifecycle
+- [docs/codex-plugin.md](docs/codex-plugin.md) — Codex plugin install, usage, maintenance, and release contract
 - [docs/agent-platforms.md](docs/agent-platforms.md) — Codex / Claude Code / opencode / OpenClaw / Hermes compatibility contract
 - [config.yaml](config.yaml) — root configuration
 
