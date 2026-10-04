@@ -38,7 +38,7 @@ cmd_compete() {
   [[ -n "$task" ]] || { usage >&2; exit 2; }
   local out="${B3EHIVE_OUTPUT:-competition-runs/$(date +%Y%m%d-%H%M%S)}"
   python3 "${ROOT_DIR}/compete-cron-builder/scripts/compete_cron_builder.py" \
-    --task "$task" --output "$out" "${runner[@]}" "${args[@]}"
+    --task "$task" --output "$out" ${runner[@]+"${runner[@]}"} ${args[@]+"${args[@]}"}
 }
 
 cmd_doctor() {
@@ -71,7 +71,7 @@ cmd_doctor() {
       fi
     done
   done
-  for repo in "${repos[@]}"; do
+  for repo in ${repos[@]+"${repos[@]}"}; do
     local found=0
     while IFS= read -r file; do
       found=1
