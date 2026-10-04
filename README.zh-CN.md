@@ -2,140 +2,116 @@
 
 [English](README.md)
 
-[![Codex Skill](https://img.shields.io/badge/Codex-Skill-blue)](https://github.com/openai/codex)
-[![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-orange)](https://docs.anthropic.com/en/docs/claude-code)
-[![Cursor Skill](https://img.shields.io/badge/Cursor-Skill-black)](https://cursor.com)
-[![Grok Build Skill](https://img.shields.io/badge/Grok%20Build-Skill-red)](https://x.ai/cli)
-[![opencode Skill](https://img.shields.io/badge/opencode-Skill-green)](https://opencode.ai)
-[![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-blue)](https://openclaw.ai)
-[![Hermes Skill](https://img.shields.io/badge/Hermes-Skill-purple)](https://hermes-agent.nousresearch.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+**五编排，一律，一环。**
 
-b3ehive 提供五个面向 agent 工作的 swarm skills。每个 skill 定义职责、边界、
-验证门和 cleanup 规则，把工作组织成可检查、可验证、可继续的有界流程。其设计
-受 Feynman Technique 启发，以清晰说明、可检查步骤和可重复证据呈现理解程度。
-每项 workflow 均先观察任务实况，再选择组织形态、运行有界循环、验证结果并留下
-可供他人检查、复现和改进的证据。
+b3ehive 把编码 agent 编成蜂群。五个 skill 各司一类工作；共守一部短律，共用一个尝试循环；未经复跑，一概不收。
 
-## 五个 Skills
+## 五编排
 
-| Skill | 作用 |
-|---|---|
-| `compete-cron-builder` | 运行有边界的方案竞争：`n` 个 workers、`m` 个 proposals、`choose k`、coverage union、repair queue 和 blueprint synthesis。 |
-| `execution-cron-builder` | 把一个已确认的 blueprint 转成 execution cron：DAG、同名 Gantt Kanban 监控、worker/master 双通道、validation gate、checkpoint 和 cleanup。 |
-| `learn-cron-builder` | 把 source scope 转成可验证 artifacts：code-to-human notes、subset learning、code-to-code transform 和 human-language translation。 |
-| `optimization-cron-builder` | 根据 design philosophy 生成 `Stage_*_AR_Blueprint.md` 和逐项 architecture-refinement research docs。 |
-| `looper-cron-builder` | 为反复尝试建立 resource-aware bridge controller：lease、side-effect gate、evidence、reward、ROI 和 pause/resume。 |
+| Skill | 用于 | 编排 |
+|---|---|---|
+| [`compete`](compete-cron-builder/SKILL.md) | 难抉择、根因、审计 | 并行候选；先 oracle，次盲审，再计票（自投作废）；或发现去重取并集 |
+| [`execution`](execution-cron-builder/SKILL.md) | 长程实现 | 一份 blueprint 化 DAG；worker 隔离；master 验收 |
+| [`learn`](learn-cron-builder/SKILL.md) | 陌生代码、迁移、翻译、外部知识 | 锁定 manifest 一一映射，或建 canon |
+| [`optimization`](optimization-cron-builder/SKILL.md) | 更快、更小、更省、更简 | 冻结 oracle 下测量循环，或设计研究 |
+| [`looper`](looper-cron-builder/SKILL.md) | 预算内反复尝试 | 共享 loop 与治理 |
 
-## Dual-Cursor Checklist Protocol
+## 结构
 
-execution 和 learn workflows 共用一套进度语法：
+```text
+core/core.md ─────────── 七律 + 定词表 ──┐
+                                         ├── 同步入每个 skill
+looper-cron-builder/loop.md ── 尝试循环 ─┘
 
-- `[ ]` 表示未完成，worker 可以 claim。
-- `[_]` 表示 worker 已自测，等待 master integration 或 curation。
-- `[x]` 表示 master 已验证、集成并接受。
+SKILL.md ── 判断：何时用、如何拆、用何 oracle、取何形状、何时止
+生成物   ── 机制：gate、harness、receipt、hook、cron 与 flow 配置
+```
 
-worker 只能执行 `[ ] -> [_]`；只有 master lane 可以执行 `[_] -> [x]`。
-cleanup 要求 `[ ]` 和 `[_]` 均为零。
+提示词载判断，产物载机制。不可违之规，化为生成的检查，不复述。
+
+## 七律
+
+1. **一源。** 一份 blueprint。`[ ]` 未做，`[_]` 已交，`[x]` 已收。
+2. **先立判官。** 开工前，每条定 oracle。
+3. **引而后断。** 外部事实出自已钉的 canon。
+4. **复跑方收。** receipt、重算指标、新输入。
+5. **先租后用。** 无奖励累积至暂停。
+6. **隔离如实。** 一 worker 一工作区，请求逐一计数。
+7. **察器而不改器。**
+
+动词即授权：worker *claim*、*submit*；oracle *measure*；非作者评审 *judge*；master *accept*、*reject*、*revert*；looper *lease*、*pause*、*retire*。他种搭配，lint 拒之。
+
+## 循环
+
+```text
+attempt ─ receipt ─ ADVANCED | STALLED | REGRESSED
+   ▲                         │
+   │   二滞：重规划          │   三滞：暂停
+   └─ ratchet：oracle 测得更优方留，否则回退
+```
+
+形状：`single`；`relay`（模型族交替，新 session，仓库即记忆）；`review`（每轮新的只读非作者评审）；`lanes`（并行，由 compete 选）。`B3_LOOP=full|single|null` 供消融。
+
+## 外部知识
+
+- **Canon。** learn 从文档 MCP、规范、datasheet、源码、策展 wiki 建条目；每条记版本、哈希、级别（`V` 一手、`F` 社区、`I` 推断）、许可、所辖决策。决策需要时引之。
+- **仪器。** profiler 与 analyzer 先探测后用，记入 `instruments.tsv`，附诊断手册。
+
+b3ehive 不内置领域知识。CUDA 文档 MCP、kernel wiki、Nsight Compute skill 一类领域包，经 canon 与仪器接入。
 
 ## 安装
 
-Clone 仓库：
-
 ```bash
-git clone https://github.com/weiyangzen/b3ehive.git
+git clone -b v2 https://github.com/weiyangzen/b3ehive.git && cd b3ehive
+scripts/install_skills.sh --target all --scope user --link
 ```
 
-### Codex Plugin
+`--link` 以软链接安装，`git pull` 即更新各平台。不加则复制并写版本戳，`bin/b3ehive doctor` 可查漂移。安装路径见 [docs/agent-platforms.zh-CN.md](docs/agent-platforms.zh-CN.md)。
 
-Codex plugin package 位于
-[`plugins/b3ehive`](plugins/b3ehive/README.zh-CN.md)，marketplace catalog
-位于 [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json)。
-
-从当前 checkout 安装：
-
-```bash
-codex plugin marketplace add .
-codex plugin add b3ehive@b3ehive
-```
-
-从 GitHub 安装：
-
-```bash
-codex plugin marketplace add weiyangzen/b3ehive
-codex plugin add b3ehive@b3ehive
-```
-
-安装后启动新的 Codex thread，加载五个 bundled skills。
-
-### Portable Skills
-
-为 Codex、Claude Code、Cursor、Grok Build、opencode、OpenClaw 和 Hermes
-安装全部五个 skills：
-
-```bash
-cd b3ehive
-scripts/install_skills.sh --target all --scope user
-```
-
-安装单个平台：
-
-```bash
-scripts/install_skills.sh --target codex --scope user
-scripts/install_skills.sh --target claude --scope user
-scripts/install_skills.sh --target cursor --scope user
-scripts/install_skills.sh --target grok --scope user
-scripts/install_skills.sh --target opencode --scope user
-scripts/install_skills.sh --target openclaw --scope user
-scripts/install_skills.sh --target hermes --scope user
-```
-
-### Cursor / Grok Build 适配
-
-五个 skill 仍共用一份 `SKILL.md` 正文。本次把 Cursor 和 Grok Build 补成
-一等安装目标：discovery 路径、`agents/*.yaml` 和 generated cron runner。
-不另写一套 workflow。
-
-- Cursor：`~/.cursor/skills/<skill>/SKILL.md` 或项目内
-  `.cursor/skills/<skill>/SKILL.md`。在 agent thread 里点名 skill。
-- Cursor worker：`scripts/run_cursor_agent.py`，走 Cursor SDK
-  `Agent.prompt` local runtime，需要 `CURSOR_API_KEY`。
-- Grok Build：`~/.grok/skills/<skill>/SKILL.md` 或项目内
-  `.grok/skills/<skill>/SKILL.md`。点名 skill 或用 `/skill-name`。
-- Grok worker：
-  `grok --always-approve --cwd "{workspace}" --prompt-file "{prompt_file}"`。
-  无头 / ACP 默认 ask，必须带该 flag 或 `_meta.yoloMode`。默认 runner 还会
-  设置 `GROK_TELEMETRY_ENABLED=0` 和 `GROK_TELEMETRY_TRACE_UPLOAD=0`。
-- 平台契约：[docs/agent-platforms.zh-CN.md](docs/agent-platforms.zh-CN.md)。
-
-## 快速使用
+## 使用
 
 ```text
-Use compete-cron-builder to compare local proposals, synthesize a blueprint, or run coverage union.
-Use execution-cron-builder for this repo and this blueprint.
-Use learn-cron-builder to learn a codebase, transform source artifacts, or translate docs.
-Use optimization-cron-builder with this design philosophy.
-Use looper-cron-builder to add resource-aware bridge controllers around these bridge surfaces and metrics.
+Use execution-cron-builder for this repository and this blueprint.
+Use compete-cron-builder to pick the root cause; the oracle is `make test`.
+Use learn-cron-builder to build a canon from these specs for BLUEPRINT.md.
+Use optimization-cron-builder in measured mode on this kernel.
+Use looper-cron-builder to govern these loops within a weekly budget.
 ```
 
-## 文档
+```bash
+bin/b3ehive compete --question-type precision \
+  --oracle-command 'make check CANDIDATE={candidate_dir}' --oracle-runs 3 \
+  "Pick the root cause of the failing scheduler test"
+```
 
-- [docs/README.zh-CN.md](docs/README.zh-CN.md) — 文档索引和多语言规则
-- [docs/concepts.zh-CN.md](docs/concepts.zh-CN.md) — 核心概念
-- [docs/blueprint.zh-CN.md](docs/blueprint.zh-CN.md) — blueprint 契约和生命周期
-- [docs/codex-plugin.zh-CN.md](docs/codex-plugin.zh-CN.md) — Codex plugin 安装、使用和发布
-- [docs/agent-platforms.zh-CN.md](docs/agent-platforms.zh-CN.md) — 平台兼容契约
+runner 取自 `B3EHIVE_AGENT_RUNNER`；`--mock` 为空跑。
 
-## Repository Map
+## 检查
 
-- [compete-cron-builder](compete-cron-builder/SKILL.md)
-- [execution-cron-builder](execution-cron-builder/SKILL.md)
-- [learn-cron-builder](learn-cron-builder/SKILL.md)
-- [optimization-cron-builder](optimization-cron-builder/SKILL.md)
-- [looper-cron-builder](looper-cron-builder/SKILL.md)
-- [plugins/b3ehive](plugins/b3ehive/README.zh-CN.md)
-- [SKILL.md](SKILL.md)
+```bash
+scripts/check_all.sh         # 同步、lint、单测、布局与平台校验
+bin/b3ehive doctor --repo .  # 过期安装与控制器
+```
 
-## License
+`evals/scenarios.json`：十五个行为场景（每 skill 三个）与消融矩阵。
 
-MIT © Weiyang ([@weiyangzen](https://github.com/weiyangzen))
+## v2 一览
+
+| | v1 | v2 |
+|---|---|---|
+| SKILL.md 正文 | 11,461 词 | 3,432 词 |
+| execution 单次加载 | 约 11.1k token | 约 3.0k token |
+| 共享契约 | 约 3.8k token，寄于 looper | 约 1.1k token，core + loop，同步入各 skill |
+| 验收 | 自测加仓库 gate | 每条 oracle、receipt、master 复跑、新输入 |
+| 外部知识 | 无 | canon 与仪器 |
+| optimization | 研究文档 | measured 与 design 两模式 |
+| compete 选择 | 按 id 取前；自投计入；关键词猜题型 | oracle、盲审、去自投计票；题型由调用方定 |
+| 校验 | 词汇存在性 | 结构与定词 lint、单测、行为评测 |
+
+移出正文的规则，存于各 skill 的 `references/lessons.md`。
+
+## 名与许可
+
+`b3` = Blueprint、Batch、Behavior；`hive` = 蜂群。
+
+MIT © Weiyang（[@weiyangzen](https://github.com/weiyangzen)）

@@ -1,222 +1,99 @@
 ---
 name: learn-cron-builder
-description: Build or repair a source-to-target learning cron for code understanding, subset learning, code-to-code transformation, API/schema/runtime/tool transformation, or human-language translation. Use when a repo needs code-to-human learning notes, strict one-to-one source file plus source-tree output coverage, explicit or fuzzy subset learning, code-to-code transformation, documentation translation, route-policy selection, dual-cursor checklists, master-only acceptance, or cleanup after all learning artifacts are validated.
+description: Turns a frozen source scope into validated artifacts such as one-to-one code understanding, code-to-code transforms, translations, or a pinned canon of normative documents. Use to learn a codebase or spec, migrate code, or translate docs. 学习代码库、规范子集、迁移、翻译。
 ---
 
-# Learn Cron Builder
+# Learn
 
-Convert a frozen source scope into validated learning or transformation
-artifacts through a repository-local pipeline. The working frame is
-`understand it until make it`.
+core v2 · loop v1; an item's oracle is traceability to its source row. Read
+`references/core.md` and `references/loop.md` first; this body adds only
+learning rules. Working frame: understand it until you can make it.
 
-## Modes And Flow
+## Modes
 
-| Mode | Direction | Output |
+| Mode | Direction | Final artifact |
 |---|---|---|
-| `learn_mode=understand` | code -> human language | One-to-one learning notes and source-tree understanding artifacts. |
-| `learn_mode=transform` | code -> code | Code-to-code, API/schema/runtime transformation, SDK generation, adapter generation, or tool-asset conversion artifacts. |
-| `learn_mode=translate` | human language -> human language | Documentation language conversion and localization artifacts. |
+| `understand` | code → human language | one note per source file plus one per folder |
+| `transform` | code → code, API, schema, runtime, tool asset | target files with source-target traceability |
+| `translate` | human language → human language | translated docs with structural parity |
+| `canon` | external documents → pinned normative subset | `canon/manifest.tsv` plus excerpts |
 
-Every mode follows:
+Every mode runs:
+`scope → subset → source manifest → target contract → submissions [_] → master [x] → cleanup`.
 
-```text
-source scope -> subset policy -> source manifest -> target contract
--> worker output [_] -> master validation [x] -> cleanup
-```
+## Manifest And Coverage
 
-## Output Discipline And Anti-Slop Contract
+- Lock `source_manifest.tsv` before any claim. A path outside it is out of
+  scope; an output that traces to no row counts for nothing.
+- `understand` maps one note per file and keeps the source tree shape:
+  `src/app/main.ts` → `Docs/learn/files/src/app/main.ts_learn.md`;
+  `src/app/` → `Docs/learn/src/app/current_folder_learn.md`. Slug-only final
+  paths are invalid. Group and chunk reports stay intermediate.
+- Completion needs zero `[ ]`, zero `[_]`, and passing file and folder indexes.
+- Rules for grouping, chunking, and folder synthesis:
+  `references/coverage-contract.md`.
 
-- Start with the requested artifact, manifest fact, mapping, route decision,
-  validation result, or source fact.
-- Give each sentence one concrete requirement, mapping, decision, action,
-  result, evidence item, or consequence. Omit process narration, opening
-  meta-commentary, generic disclaimers, filler, restatements, and closing recaps.
-- Report verification only through its result, evidence, and consequence.
-- Omit relationship or causal claims unsupported by manifest, source, or
-  validator evidence. Handle material uncertainty under the next rule; leave no
-  speculative transition, inferred mapping, or placeholder.
-- When unresolved uncertainty changes correctness, safety, legality, mapping,
-  or the available action, state the exact unknown, condition, and consequence.
-- Include a boundary only when it changes correctness, safety, legality, or the
-  available action; name the exact constraint and permitted path.
-- Use direct, positive statements when truth conditions permit. Preserve
-  technical negation for scope exclusions, permissions, safety gates, failure
-  behavior, traceability, and acceptance rules.
-- Keep the body within 10% above or below an explicit target length. Without a
-  target, use the shortest complete form that preserves the artifacts,
-  mappings, evidence, decisions, and consequences.
-- Before delivery, silently inspect the text character by character for filler,
-  duplicated safeguards, unsupported claims, vague predicates, stale
-  placeholders, fabricated mappings, coverage gaps, missing sections, and
-  length. Preserve the exact spelling of state marks, schema keys, commands,
-  paths, enums, thresholds, mode names, and validator-dependent strings.
+## Subsets
 
-## Shared b3ehive Contract
+- Explicit subsets: globs, branch diffs, languages.
+- Fuzzy subsets (for example "scheduler core") produce
+  `subset_candidates.tsv`, `subset_decision.md`, and a locked manifest under
+  `Docs/learn/subsets/<subset_id>/`. High-confidence files enter; borderline
+  files go to the master; context-only files count for nothing until promoted.
 
-Follow `../looper-cron-builder/references/b3ehive-bridge-contract.md` for route
-selection, estimator decisions, nested calls, evidence handoff, `looper_log`
-capture, ROI, and self-evolution.
+## Canon Mode
 
-Local obligations:
+Canon is how outside knowledge enters the hive: documentation MCP servers,
+official specs, datasheets, source code, and curated wikis.
 
-- `source_manifest.tsv` and one-to-one file plus folder coverage are hard caps,
-  not estimator choices.
-- Every nontrivial automatic subset, route, batch, split, transform, or
-  translate choice should leave `EstimatorPolicy` and `RouteDecision` evidence.
-- Workers produce only `[_]` artifacts. Master validation alone writes `[x]`.
-- Coverage gaps, fuzzy-subset ambiguity, manifest friction, route over- or
-  under-spend, translation-route mismatch, transform-traceability friction,
-  scaffold weakness, or tool-integration friction produces a `looper_log`.
-- Each `looper_log` must identify the understood, transformed, or translated
-  `TargetObject` and the signal-producing `InstrumentObject`: subset policy,
-  manifest, route, traceability scaffold, validator, tool, or skill composition.
-- A looper-log-derived change to coverage, route, transform, or translation
-  policy requires EvidenceLint, ROI, ParetoGate, rollback, and master `[x]`.
+- Source order: domain MCP server → official docs, specs, source → community.
+- Each entry records `id`, `locator`, `version`, `retrieved`, `sha256`, `mode`,
+  `level` (`V` primary, `F` community, `I` inferred), `license`, and `governs`.
+- MCP answers drift; snapshot the excerpt and record its date and hash. Name MCP
+  tools by full name: `mcp:<server>:<tool>`.
+- A license that forbids excerpts leaves a pointer only; a generated check
+  enforces it.
+- Audit on a schedule: hash or version drift, upstream corrections, wrong
+  content to prune.
+- Other skills cite entries when a decision needs them; nobody pastes the canon
+  into every prompt. Its value is measured by ablation.
+- An `understand` note may be promoted into a canon entry for another run.
 
-## Acceptance State
+Schema and audit rules: `references/canon.md`.
 
-- Generate and lock `source_manifest.tsv` before worker claims.
-- Use `[ ]`, `[_]`, and `[x]` as the only checkbox states.
-- Workers may only advance `[ ] -> [_]`.
-- The master lane is the only actor that may advance `[_] -> [x]`.
-- Cleanup treats `[ ]` and `[_]` as unfinished.
-- Completion requires zero `[ ]`, zero `[_]`, and passing coverage indices.
+## Route
 
-For `learn_mode=understand`, final artifacts map one-to-one to source files and
-preserve the source-tree shape:
+`route_policy=auto|high_reasoning|standard|cheap_translation|uncommon_translation|custom`.
+Complex code and transforms take high reasoning; mechanical conversions and most
+translation take cheaper routes; escalate on high-stakes meaning, glossary
+conflicts, or repeated validator failure. Record each route in
+`Docs/learn/route_decision.md`. Detail: `references/route-policy.md`.
 
-```text
-src/app/main.ts
-  -> Docs/learn/files/src/app/main.ts_learn.md
+## Surfaces
 
-.github/workflows/ci.yml
-  -> Docs/learn/files/.github/workflows/ci.yml_learn.md
-
-src/app/
-  -> Docs/learn/src/app/current_folder_learn.md
-
-repo root
-  -> Docs/learn/current_folder_learn.md
-```
-
-Opaque slug-only final paths are invalid. Group and chunk reports remain
-intermediate artifacts.
-
-## Subset Contract
-
-Explicit and fuzzy subsets are first-class inputs.
-
-Explicit subsets include:
-
-```text
-src/auth/**
-packages/compiler/**
-files touched by this branch
-language=rust
-```
-
-Fuzzy subsets include:
-
-```text
-algorithm subset
-scheduler core
-inference path
-payment risk surface
-```
-
-Each fuzzy subset produces:
-
-```text
-Docs/learn/subsets/<subset_id>/subset_candidates.tsv
-Docs/learn/subsets/<subset_id>/subset_decision.md
-Docs/learn/subsets/<subset_id>/source_manifest.tsv
-```
-
-Workers may read context-only files. Those files produce no final artifact and
-do not count toward completion until promotion into the locked source manifest.
-
-## Required Surfaces
-
-Base files:
-
-```text
-Docs/learn/source_manifest.tsv
-Docs/learn/learn_checklist.md
-Docs/learn/todos_YYYYMMDD.md
-Docs/learn/file_learn_index.tsv
-Docs/learn/folder_learn_index.tsv
-Docs/learn/route_decision.md
-```
-
-Transform mode also requires:
-
-```text
-Docs/learn/target_contract.md
-Docs/learn/mapping_policy.tsv
-Docs/learn/validation_policy.md
-Docs/learn/traceability_index.tsv
-```
-
-## Route Policy
-
-Route choice is contractual:
-
-```text
-route_policy=auto|high_reasoning|standard|cheap_translation|uncommon_translation|custom
-```
-
-Defaults:
-
-- `understand`: high reasoning for complex code; standard for small or simple
-  files.
-- `transform`: high reasoning for code/API/schema/runtime; standard for
-  mechanical tool-asset conversion.
-- `translate`: cheap or uncommon translation route by default; escalation is
-  limited to high-stakes meaning, code-heavy semantics, glossary conflicts,
-  repeated validator failure, or an explicit human request.
-
-Write every route decision to `Docs/learn/route_decision.md`.
+Base: `source_manifest.tsv`, `learn_checklist.md`, `todos_YYYYMMDD.md`,
+`file_learn_index.tsv`, `folder_learn_index.tsv`, `route_decision.md` under
+`Docs/learn/`. Transform adds `target_contract.md`, `mapping_policy.tsv`,
+`validation_policy.md`, `traceability_index.tsv`. Canon adds
+`canon/manifest.tsv` and `canon/excerpts/`.
 
 ## Validation
 
-Before declaring a learn cron ready, verify:
-
-- `source_manifest.tsv` covers exactly the locked source scope.
-- Final per-file artifacts map exactly one-to-one to source files.
-- Folder artifacts cover every represented folder.
-- `[_]` remains unfinished, and workers cannot write `[x]`.
+- Manifest covers exactly the locked scope; per-file notes map one to one.
+- Folder notes cover every represented folder.
 - Subset output excludes out-of-scope files.
-- Transform output carries source-target traceability.
+- Transform output carries traceability; workers leave sources untouched.
 - Translate output preserves headings, anchors, links, code blocks, tables,
   glossary decisions, and section parity.
-- Runs with instrument feedback contain `looper_log` entries at `micro`,
-  `skill`, `composition`, `scaffold`, `tool`, or `task` grain.
-- The cron space guard passes.
-- Generated shell helpers pass `bash -n`.
-
-## Looper Handoff
-
-When embedded in `looper-cron-builder`, learn may run only inside an active
-`ResourceLease` with a `ParentLeaseRef`. Learn output remains provisional until
-the looper or owning master lane accepts it.
-
-Nested learn runs cannot write `[x]`, escape the parent lease budget, or
-classify final reward. They produce reward candidates only. Token, wall-clock,
-human-review, disk, and output costs roll into the parent looper attempt before reward
-and ROI accounting. Paused loops cannot start nested learn runs.
-
-Nested learn should emit `looper_log` refs when subset choice, manifest shape,
-one-to-one coverage, route, transform traceability, translation parity, or
-generated tooling yields reusable instrument feedback. The log should separate
-target feedback from instrument feedback so review can distinguish source-subset
-difficulty from learn-pipeline configuration.
+- Canon entries resolve, hashes match, and licenses hold.
+- Generated shell passes `bash -n`; the cron space guard passes.
 
 ## References
 
-Read only the relevant reference:
-
-- `references/coverage-contract.md`: strict 1:1 file tree, grouping, chunking,
-  folder synthesis, and subset coverage.
-- `references/route-policy.md`: mode-specific route selection and escalation.
-- `references/learn-pattern.md`: full workflow, components, and behavior
-  coverage.
+- `references/core.md`, `references/loop.md`: shared laws and loop
+- `references/coverage-contract.md`: 1:1 tree, grouping, chunking, subsets
+- `references/transform-contract.md`: per-mode content, runtime, repair
+- `references/route-policy.md`: route choice and escalation
+- `references/canon.md`: canon schema and audit
+- `references/substrate-cron.md`: cron, runners, disk guards
+- `references/lessons.md`: where each v1 rule now lives

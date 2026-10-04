@@ -37,6 +37,8 @@ Cursor 和 Grok Build 复用同一套 `name` / `description` frontmatter。Grok 
 仓库根目录的 `SKILL.md` 是 b3ehive skill index。实际安装到 Codex、Claude Code、
 Cursor、Grok Build、opencode、OpenClaw 和 Hermes 的是这五个 skill 目录。
 
+完整 Codex worker 契约见 `execution-cron-builder/references/transport-codex-tui.md`；runner 选择与磁盘守卫见各 skill 的 `references/substrate-cron.md`。
+
 ## Runner Contract
 
 Cron-oriented skills 应该用通用的 agent runner 描述 worker 执行，再在安装或仓库 bootstrap 时选择具体平台命令。

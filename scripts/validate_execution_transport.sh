@@ -10,6 +10,11 @@ required_files=(
   "agents/openai.yaml"
   "references/execution-pattern.md"
   "references/gate-rules.md"
+  "references/transport-codex-tui.md"
+  "references/core.md"
+  "references/loop.md"
+  "references/substrate-cron.md"
+  "references/lessons.md"
 )
 
 errors=0
@@ -29,7 +34,10 @@ for relative in "${required_files[@]}"; do
   fi
 done
 
-skill_text="${SKILL_DIR}/SKILL.md"
+# v2 keeps the transport contract in references; check the skill as a whole.
+skill_text="$(mktemp)"
+trap 'rm -f "$skill_text"' EXIT
+cat "${SKILL_DIR}/SKILL.md" "${SKILL_DIR}"/references/*.md > "$skill_text"
 for required in \
   'WORKER_TRANSPORT=tmux_codex_tui' \
   'APP_SERVER_WORKERS=forbidden' \
@@ -100,7 +108,7 @@ for required in \
 done
 
 for required in \
-  'same-name Gantt Kanban monitoring' \
+  'Same-Name Gantt Kanban Monitoring' \
   'mandatory same-name Gantt companion' \
   '<dir>/<name>_Gantt.<ext>' \
   'Stage_3_AR_Gantt.md' \

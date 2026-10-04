@@ -1,50 +1,37 @@
 #!/usr/bin/env python3
+"""Run a bounded b3ehive proposal competition and keep its ledger.
+
+The script runs stages, records receipts, measures candidates with an optional
+oracle, tallies votes, and merges findings. The calling agent decides the
+question type, counts, oracle, and routes; the script never guesses them.
+"""
 import argparse
 import concurrent.futures
 import datetime as dt
+import hashlib
 import json
+import os
 import pathlib
 import re
 import shutil
 import subprocess
+import sys
 
-QUESTION_TYPES = {
-    "auto",
-    "precision",
-    "coverage",
-    "audit",
-    "blueprint",
-    "seo",
-    "execution_choice",
-    "repair",
-}
-
-COMPETITION_SHAPES = {
-    "auto",
-    "three_way_challenge",
-    "parallel_proposals",
-    "coverage_sweep",
-    "repair_search",
-    "top_k_synthesis",
-}
-
-SELECTION_MODES = {
-    "auto",
-    "best_one",
-    "top_k",
-    "coverage_union",
-    "risk_union",
-    "vote_then_tiebreak",
-    "repair_queue",
-}
-
-OLD_THREE_WAY_IDS = ["run_a", "run_b", "run_c"]
+QUESTION_TYPES = ("precision", "coverage", "audit", "repair", "blueprint", "execution_choice")
+UNION_TYPES = {"coverage", "audit"}
+SHAPES = ("lanes", "three_way_challenge")
+THREE_WAY_IDS = ["run_a", "run_b", "run_c"]
+SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+FINDING_RE = re.compile(r"^\s*FINDING:\s*(.+)$", re.M)
+VOTE_RE = re.compile(r"^\s*selected_candidate_id\s*:\s*([A-Za-z0-9_-]+)\s*$", re.M | re.I)
+REVIEW_RE = re.compile(r"^\s*selected\s*:\s*([A-Z])\s*$", re.M)
+SCORE_RE = re.compile(r"^\s*SCORE:\s*(-?[0-9]+(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?)\s*$", re.M)
 
 
 def read_text(path):
     try:
         return pathlib.Path(path).read_text(encoding="utf-8").strip()
-    except FileNotFoundError:
+    except (FileNotFoundError, IsADirectoryError):
         return ""
 
 
@@ -55,587 +42,448 @@ def write_text(path, text):
 
 
 def write_json(path, data):
-    path = pathlib.Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    write_text(path, json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False))
 
 
-def truncate_text(text, max_bytes):
-    if max_bytes <= 0:
-        return text or ""
+def sha256(text):
+    return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
+
+
+def truncate(text, max_bytes):
     data = (text or "").encode("utf-8", errors="replace")
-    if len(data) <= max_bytes:
+    if max_bytes <= 0 or len(data) <= max_bytes:
         return text or ""
-    marker = f"[output truncated to last {max_bytes} bytes]\n"
-    tail = data[-max_bytes:]
-    return marker + tail.decode("utf-8", errors="replace")
-
-
-def ensure_output_budget(output, max_mb):
-    if max_mb <= 0:
-        return
-    output = pathlib.Path(output)
-    if not output.exists():
-        return
-    max_bytes = max_mb * 1024 * 1024
-    for path in output.rglob("*"):
-        if not path.is_file():
-            continue
-        try:
-            if path.stat().st_size <= max_bytes:
-                continue
-            data = path.read_bytes()[-max_bytes:]
-            tmp = path.with_suffix(path.suffix + ".tmp")
-            tmp.write_bytes(f"[file truncated to last {max_bytes} bytes]\n".encode("utf-8") + data)
-            tmp.replace(path)
-        except OSError:
-            continue
+    return f"[output truncated to last {max_bytes} bytes]\n" + data[-max_bytes:].decode("utf-8", errors="replace")
 
 
 def require_free_space(path, min_free_gb):
     if min_free_gb <= 0:
         return
-    usage = shutil.disk_usage(path)
-    free_gb = usage.free // (1024**3)
+    path = pathlib.Path(path)
+    probe = path if path.exists() else path.parent
+    while not probe.exists():
+        probe = probe.parent
+    free_gb = shutil.disk_usage(probe).free // (1024 ** 3)
     if free_gb < min_free_gb:
-        raise RuntimeError(f"only {free_gb}GiB free at {path}; need at least {min_free_gb}GiB")
+        raise RuntimeError(f"only {free_gb}GiB free at {probe}; need at least {min_free_gb}GiB")
 
 
-def classify_question(task, requested):
-    if requested != "auto":
-        return requested
-    task_l = task.lower()
-    if any(word in task_l for word in ["security", "performance", "coverage", "audit", "release", "no omissions"]):
-        return "audit" if "audit" in task_l or "release" in task_l else "coverage"
-    if any(word in task_l for word in ["repair", "failure", "failed", "fix", "lint", "test failed", "merge conflict"]):
-        return "repair"
-    if any(word in task_l for word in ["blueprint", "plan", "strategy", "architecture", "prototype"]):
-        return "blueprint"
-    if "seo" in task_l:
-        return "seo"
-    if any(word in task_l for word in ["choose", "best", "root cause", "correct"]):
-        return "precision"
-    return "precision"
+# ---------------------------------------------------------------- planning
 
-
-def resolve_shape(question_type, requested):
-    if requested != "auto":
-        return requested
-    if question_type == "coverage":
-        return "coverage_sweep"
-    if question_type == "audit":
-        return "coverage_sweep"
-    if question_type == "repair":
-        return "repair_search"
-    if question_type in {"blueprint", "seo"}:
-        return "top_k_synthesis"
-    return "parallel_proposals"
-
-
-def resolve_selection(question_type, shape, requested):
-    if requested != "auto":
-        return requested
-    if shape == "three_way_challenge":
-        return "vote_then_tiebreak"
-    if question_type == "coverage":
-        return "coverage_union"
-    if question_type == "audit":
-        return "risk_union"
-    if question_type == "repair":
-        return "repair_queue"
-    if question_type in {"blueprint", "seo"}:
-        return "top_k"
-    return "best_one"
-
-
-def auto_proposal_count(question_type, shape, budget_workers):
-    budget_workers = max(1, budget_workers)
-    if shape == "three_way_challenge":
-        return 3
-    if question_type in {"precision", "repair"}:
-        return min(budget_workers, 4)
-    if question_type in {"blueprint", "seo"}:
-        return min(budget_workers, 5)
-    return budget_workers
-
-
-def resolve_count(value, default):
-    if value == "auto":
-        return default
-    return max(1, int(value))
-
-
-def resolve_choose_count(value, question_type, shape, selection_mode, proposal_count):
-    if value == "all-valid":
-        return "all_valid"
-    if value != "auto":
-        return max(1, min(int(value), proposal_count))
-    if shape == "three_way_challenge":
-        return 1
-    if selection_mode in {"coverage_union", "risk_union"} or question_type in {"coverage", "audit"}:
-        return "all_valid"
-    if selection_mode == "top_k":
-        return min(proposal_count, 3)
-    if selection_mode == "repair_queue":
-        return min(proposal_count, 2)
-    return 1
-
-
-def candidate_paths(root, candidate_id, artifact_layout):
+def candidate_paths(root, cid, layout):
     root = pathlib.Path(root)
-    if artifact_layout == "old_three_way":
-        implementation_dir = root / candidate_id / "implementation"
-        return {
-            "implementation_dir": implementation_dir,
-            "result": implementation_dir / "result.md",
-            "failure": implementation_dir / "failure.md",
-            "verification": implementation_dir / "verification.md",
-            "peer_review_round_1": implementation_dir / "critique_round_1.md",
-            "revision_round_1": implementation_dir / "update_round_1.md",
-            "peer_review_round_2": implementation_dir / "critique_round_2.md",
-            "repair_synthesis": implementation_dir / "final_repair.md",
-        }
-    candidate_dir = root / candidate_id
-    return {
-        "implementation_dir": candidate_dir / "implementation",
-        "result": candidate_dir / "result.md",
-        "failure": candidate_dir / "failure.md",
-        "verification": candidate_dir / "verification.md",
-        "peer_review_round_1": candidate_dir / "peer_review_round_1.md",
-        "revision_round_1": candidate_dir / "revision_round_1.md",
-        "peer_review_round_2": candidate_dir / "peer_review_round_2.md",
-        "repair_synthesis": candidate_dir / "repair_synthesis.md",
-    }
-
-
-def build_candidates(output, shape, proposal_count, artifact_layout):
-    if shape == "three_way_challenge":
-        ids = OLD_THREE_WAY_IDS
+    if layout == "old_three_way":
+        d = root / cid / "implementation"
+        names = {"result": "result.md", "verification": "verification.md",
+                 "peer_review_round_1": "critique_round_1.md", "revision_round_1": "update_round_1.md",
+                 "peer_review_round_2": "critique_round_2.md", "repair_synthesis": "final_repair.md"}
     else:
-        ids = [f"proposal_{idx:03d}" for idx in range(1, proposal_count + 1)]
-    return [
-        {
-            "id": candidate_id,
-            "agent_id": candidate_id,
-            "label": f"Candidate {candidate_id}",
-            "paths": candidate_paths(output, candidate_id, artifact_layout),
-        }
-        for candidate_id in ids
-    ]
-
-
-def peer_blocks(candidates, preferred_file):
-    blocks = []
-    for candidate in candidates:
-        text = read_text(candidate["paths"].get(preferred_file, "")) or read_text(candidate["paths"]["result"])
-        blocks.append(f"## {candidate['label']} ({candidate['id']})\n{text or '(empty)'}")
-    return "\n\n".join(blocks)
-
-
-def build_candidate_prompt(stage, plan, candidate, peer_candidates=None, verifier_report="", critiques="", previous_text="", selected_id=""):
-    peer_candidates = peer_candidates or []
-    header = "\n".join(
-        [
-            f"You are candidate {candidate['id']} in a {plan['competition_shape']} competition.",
-            "Be concrete, testable, and blunt. Avoid vague process narration.",
-            f"Question type: {plan['question_type']}",
-            f"Selection mode: {plan['selection_mode']}",
-            f"Original task: {plan['task']}",
-            f"Writable output directory: {candidate['paths']['implementation_dir']}",
-            "Do not write outside your candidate output directory.",
-        ]
-    )
-    if stage == "proposal":
-        return "\n\n".join(
-            [
-                header,
-                "Stage: proposal.",
-                "Return implementation details, validation steps, risks, and next actions.",
-            ]
-        )
-    if stage == "peer_review_round_1":
-        return "\n\n".join(
-            [
-                header,
-                "Stage: first peer review.",
-                "Critique the other candidates sharply. Focus on correctness, missing tests, maintainability, and integration risk.",
-                f"Verifier report:\n{verifier_report or '(empty)'}",
-                f"Peer outputs:\n{peer_blocks(peer_candidates, 'result') or '(empty)'}",
-            ]
-        )
-    if stage == "revision_round_1":
-        return "\n\n".join(
-            [
-                header,
-                "Stage: revision after peer reviews.",
-                "Produce a full revised result, not just a reply to comments.",
-                f"Previous result:\n{previous_text or '(empty)'}",
-                f"Reviews received:\n{critiques or '(empty)'}",
-            ]
-        )
-    if stage == "peer_review_round_2":
-        return "\n\n".join(
-            [
-                header,
-                "Stage: second peer review and selection vote.",
-                "Critique the revised peer outputs and end with selected_candidate_id: <candidate id>.",
-                f"Peer revised outputs:\n{peer_blocks(peer_candidates, 'revision_round_1') or '(empty)'}",
-            ]
-        )
-    if stage == "repair_synthesis":
-        return "\n\n".join(
-            [
-                header,
-                "Stage: final repair synthesis.",
-                f"Selected candidate: {selected_id or '(unknown)'}",
-                "Summarize found issues and the repair work you are responsible for.",
-                f"Your revised result:\n{previous_text or '(empty)'}",
-                f"Second-round reviews:\n{critiques or '(empty)'}",
-            ]
-        )
-    raise ValueError(f"unknown candidate stage: {stage}")
-
-
-def build_verifier_prompt(plan):
-    outputs = []
-    for candidate in plan["candidates"]:
-        text = read_text(candidate["paths"]["result"]) or read_text(candidate["paths"]["failure"])
-        outputs.append(f"## {candidate['label']} ({candidate['id']})\n{text or '(empty)'}")
-    return "\n\n".join(
-        [
-            "You are the initial verifier for a proposal competition.",
-            "Check candidates for non-empty output, task alignment, blockers, warnings, and likely validation steps.",
-            f"Question type: {plan['question_type']}",
-            f"Original task: {plan['task']}",
-            "Candidate outputs:\n" + "\n\n".join(outputs),
-        ]
-    )
-
-
-def parse_candidate_id(text, candidate_ids):
-    for pattern in [
-        r"selected_candidate_id\s*:\s*([A-Za-z0-9_-]+)",
-        r"best_run_id\s*:\s*([A-Za-z0-9_-]+)",
-        r"\b(run_[abc])\b",
-        r"\b(proposal_\d{3})\b",
-    ]:
-        match = re.search(pattern, text or "", flags=re.I)
-        if match:
-            candidate_id = match.group(1).lower()
-            if candidate_id in candidate_ids:
-                return candidate_id
-    return ""
-
-
-def select_candidates(selection_mode, choose_count, candidates, review_texts):
-    candidate_ids = [candidate["id"] for candidate in candidates if read_text(candidate["paths"]["result"])]
-    if not candidate_ids:
-        return []
-    if choose_count == "all_valid" or selection_mode in {"coverage_union", "risk_union"}:
-        return candidate_ids
-    if selection_mode == "vote_then_tiebreak":
-        counts = {candidate_id: 0 for candidate_id in candidate_ids}
-        for text in review_texts:
-            selected = parse_candidate_id(text, candidate_ids)
-            if selected in counts:
-                counts[selected] += 1
-        return [sorted(counts.items(), key=lambda item: (-item[1], item[0]))[0][0]]
-    count = choose_count if isinstance(choose_count, int) else 1
-    return candidate_ids[:count]
-
-
-def run_agent(args, plan, *, agent_id, candidate_id, stage, prompt, output_file):
-    prompt_file = pathlib.Path(args.output) / "_prompts" / f"{candidate_id}_{stage}.md"
-    write_text(prompt_file, prompt)
-    if args.runner == "mock":
-        if stage == "peer_review_round_2":
-            return f"{candidate_id} {stage} mock output\nselected_candidate_id: {plan['candidates'][0]['id']}"
-        return f"{candidate_id} {stage} mock output"
-    if args.runner != "command":
-        raise ValueError(f"unsupported runner: {args.runner}")
-    if not args.command:
-        raise ValueError("--command is required when --runner command")
-    command = args.command.format(
-        agent_id=agent_id,
-        run_id=candidate_id,
-        candidate_id=candidate_id,
-        stage=stage,
-        prompt_file=str(prompt_file),
-        output_file=str(output_file),
-        competition_id=plan["competition_id"],
-        question_type=plan["question_type"],
-        selection_mode=plan["selection_mode"],
-    )
-    completed = subprocess.run(
-        command,
-        shell=True,
-        check=False,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    max_bytes = args.max_output_mb * 1024 * 1024
-    output = truncate_text(completed.stdout.strip(), max_bytes)
-    stderr = truncate_text(completed.stderr.strip(), max_bytes)
-    if stderr:
-        output = (output + "\n\nSTDERR:\n" + stderr).strip()
-    if completed.returncode != 0:
-        raise RuntimeError(output or f"command failed with exit code {completed.returncode}")
-    return output
-
-
-def write_initial_manifest(output, plan, args):
-    manifest = {
-        "schema_version": "b3ehive.compete.v1",
-        "competition_id": plan["competition_id"],
-        "task": plan["task"],
-        "question_type": plan["question_type"],
-        "competition_shape": plan["competition_shape"],
-        "selection_mode": plan["selection_mode"],
-        "artifact_layout": plan["artifact_layout"],
-        "budget": {
-            "workers": args.budget_workers,
-            "proposal_count": len(plan["candidates"]),
-            "choose_count": plan["choose_count"],
-            "max_output_mb": args.max_output_mb,
-        },
-        "candidate_ids": [candidate["id"] for candidate in plan["candidates"]],
-        "stages": [
-            "proposal",
-            "initial_verification",
-            "peer_review_round_1",
-            "revision_round_1",
-            "peer_review_round_2",
-            "selection_vote",
-            "repair_synthesis",
-        ],
-        "failure_policy": {
-            "parallel_settled": True,
-            "fail_only_if_no_valid_candidate": True,
-        },
-        "selection": {
-            "selected_ids": [],
-            "tie_break": "stable_candidate_id",
-        },
-        "handoff": {
-            "mode": args.handoff_mode,
-            "source_blueprint_item_id": args.source_item_id or None,
-            "source_loop_id": args.source_loop_id or None,
-            "may_mark_x": False,
-        },
-    }
-    write_json(pathlib.Path(output) / "compete_manifest.json", manifest)
-    return manifest
-
-
-def update_manifest_selection(output, selected_ids):
-    manifest_path = pathlib.Path(output) / "compete_manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest["selection"]["selected_ids"] = selected_ids
-    write_json(manifest_path, manifest)
+        d = root / cid
+        names = {"result": "result.md", "verification": "verification.md",
+                 "peer_review_round_1": "peer_review_round_1.md", "revision_round_1": "revision_round_1.md",
+                 "peer_review_round_2": "peer_review_round_2.md", "repair_synthesis": "repair_synthesis.md"}
+    paths = {key: d / name for key, name in names.items()}
+    paths["dir"] = d
+    paths["receipts"] = d / "receipts.jsonl"
+    return paths
 
 
 def build_plan(args):
-    question_type = classify_question(args.task, args.question_type)
-    shape = resolve_shape(question_type, args.competition_shape)
-    selection_mode = resolve_selection(question_type, shape, args.selection_mode)
-    proposal_default = auto_proposal_count(question_type, shape, args.budget_workers)
-    proposal_count = resolve_count(args.proposal_count, proposal_default)
-    if shape == "three_way_challenge":
-        proposal_count = 3
-    choose_count = resolve_choose_count(args.choose_count, question_type, shape, selection_mode, proposal_count)
-    candidates = build_candidates(args.output, shape, proposal_count, args.artifact_layout)
+    if args.shape == "three_way_challenge":
+        ids, rounds, choose = THREE_WAY_IDS, 1, 1
+    else:
+        if args.proposal_count < 1:
+            raise SystemExit("--proposal-count must be at least 1")
+        ids = [f"proposal_{i:03d}" for i in range(1, args.proposal_count + 1)]
+        rounds = args.rounds
+        choose = args.choose_count
+    union = args.question_type in UNION_TYPES or choose == "all-valid"
+    if not union:
+        choose = int(choose)
+        if choose < 1:
+            raise SystemExit("--choose-count must be at least 1 or all-valid")
+    if args.handoff_mode == "looper_attempt" and not args.parent_lease_ref:
+        raise SystemExit("--handoff-mode looper_attempt requires --parent-lease-ref")
     return {
         "competition_id": f"COMP-{dt.datetime.now().strftime('%Y%m%d-%H%M%S')}",
         "task": args.task.strip(),
-        "question_type": question_type,
-        "competition_shape": shape,
-        "selection_mode": selection_mode,
-        "artifact_layout": args.artifact_layout,
-        "choose_count": choose_count,
-        "candidates": candidates,
+        "question_type": args.question_type,
+        "shape": args.shape,
+        "selection": "union" if union else "rank",
+        "choose_count": "all_valid" if union else choose,
+        "rounds": rounds,
+        "layout": args.artifact_layout,
+        "candidates": [{"id": cid, "paths": candidate_paths(args.output, cid, args.artifact_layout), "failed": None}
+                       for cid in ids],
     }
 
 
+# ---------------------------------------------------------------- prompts
+
+def header(plan, cand):
+    return "\n".join([
+        f"You are candidate {cand['id']} in a {plan['shape']} competition.",
+        f"Question type: {plan['question_type']}.",
+        f"Task: {plan['task']}",
+        f"Write only inside {cand['paths']['dir']}.",
+        "Be concrete and testable. Report facts, not forecasts.",
+    ])
+
+
+def finding_rule(plan):
+    if plan["selection"] != "union":
+        return ""
+    return ("Report each finding on its own line as "
+            "`FINDING: <location> | <claim> | <reproduction> | <severity>`; "
+            "a finding without a reproduction is dropped.")
+
+
+def current_text(cand):
+    p = cand["paths"]
+    return read_text(p["revision_round_1"]) or read_text(p["result"])
+
+
+def peer_block(peers, key):
+    return "\n\n".join(f"## {c['id']}\n{read_text(c['paths'][key]) or read_text(c['paths']['result']) or '(empty)'}"
+                       for c in peers)
+
+
+def stage_prompt(stage, plan, cand, peers, received=""):
+    h = header(plan, cand)
+    if stage == "proposal":
+        return f"{h}\n\nStage: proposal. Return the result, its validation commands, risks, and next actions. {finding_rule(plan)}"
+    if stage == "peer_review_round_1":
+        return f"{h}\n\nStage: peer review. Critique correctness, missing tests, and integration risk.\n\n{peer_block(peers, 'result')}"
+    if stage == "revision_round_1":
+        return (f"{h}\n\nStage: revision. Return a full revised result. {finding_rule(plan)}\n\n"
+                f"Your result:\n{read_text(cand['paths']['result'])}\n\nReviews received:\n{received or '(none)'}")
+    if stage == "peer_review_round_2":
+        return (f"{h}\n\nStage: second review and vote. Critique the revised peers, then end with one line "
+                f"`selected_candidate_id: <id>` naming a peer. Votes for yourself are void.\n\n"
+                f"{peer_block(peers, 'revision_round_1')}")
+    if stage == "repair_synthesis":
+        return (f"{h}\n\nStage: repair synthesis. Selected: {received}. List the issues found and the repairs "
+                f"you own.\n\nYour result:\n{current_text(cand)}")
+    raise ValueError(stage)
+
+
+# ---------------------------------------------------------------- running
+
+def run_command(template, values, max_mb, env=None):
+    command = template.format(**values)
+    done = subprocess.run(command, shell=True, text=True, capture_output=True,
+                          env={**os.environ, **(env or {})})
+    out = truncate(done.stdout.strip(), max_mb * 1024 * 1024)
+    err = truncate(done.stderr.strip(), max_mb * 1024 * 1024)
+    return done.returncode, out, err, command
+
+
+def mock_output(plan, cand, stage, peers):
+    ids = [c["id"] for c in plan["candidates"]]
+    n = ids.index(cand["id"])
+    text = f"{cand['id']} {stage} mock output"
+    if stage in ("proposal", "revision_round_1") and plan["selection"] == "union":
+        text += (f"\nFINDING: src/api.py:10 | missing input validation | pytest tests/test_api.py::test_bad_input | high"
+                 f"\nFINDING: src/api.py:{20 + n} | unchecked error path {n} | pytest tests/test_api.py::test_err_{n} | medium")
+    if stage == "peer_review_round_2" and peers:
+        text += f"\nselected_candidate_id: {ids[(n + 1) % len(ids)]}"
+    return text
+
+
+def run_stage(args, plan, stage, out_key, cands, prompt_for):
+    def one(cand):
+        peers = [c for c in plan["candidates"] if c["id"] != cand["id"] and not c["failed"]]
+        prompt = prompt_for(cand, peers)
+        prompt_file = pathlib.Path(args.output) / "_prompts" / f"{cand['id']}_{stage}.md"
+        write_text(prompt_file, prompt)
+        out_file = cand["paths"][out_key]
+        if args.runner == "mock":
+            return cand, 0, mock_output(plan, cand, stage, peers), "", "mock"
+        values = {"agent_id": cand["id"], "run_id": cand["id"], "candidate_id": cand["id"], "stage": stage,
+                  "prompt_file": str(prompt_file), "output_file": str(out_file),
+                  "candidate_dir": str(cand["paths"]["dir"]), "competition_id": plan["competition_id"],
+                  "question_type": plan["question_type"], "selection_mode": plan["selection"]}
+        code, out, err, cmd = run_command(args.command, values, args.max_output_mb)
+        return cand, code, out, err, cmd
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(args.budget_workers, len(cands)))) as pool:
+        for cand, code, out, err, cmd in pool.map(one, cands):
+            receipt = {"stage": stage, "argv": cmd, "exit_code": code, "stdout_sha256": sha256(out),
+                       "at": dt.datetime.now().isoformat(timespec="seconds")}
+            with cand["paths"]["receipts"].open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(receipt) + "\n")
+            if code != 0 or not out.strip():
+                cand["failed"] = stage
+                write_text(cand["paths"]["dir"] / f"failure_{stage}.md",
+                           f"exit {code}\n\n{out}\n\nSTDERR:\n{err}".strip())
+            else:
+                write_text(cand["paths"][out_key], out)
+
+
+def failed_text(plan):
+    items = [c["id"] + "@" + c["failed"] for c in plan["candidates"] if c["failed"]]
+    return ", ".join(items) or "none"
+
+
+def live(plan):
+    return [c for c in plan["candidates"] if not c["failed"]]
+
+
+# ---------------------------------------------------------------- selection
+
+def measure(args, plan, cand):
+    """Run the oracle `--oracle-runs` times; every run must pass. Score is the worst run."""
+    scores, passed, runs = [], True, []
+    for run_index in range(args.oracle_runs):
+        values = {"candidate_id": cand["id"], "candidate_dir": str(cand["paths"]["dir"]),
+                  "result_file": str(cand["paths"]["revision_round_1"] if read_text(cand["paths"]["revision_round_1"])
+                                     else cand["paths"]["result"]),
+                  "run_index": run_index, "competition_id": plan["competition_id"]}
+        env = {"B3_ORACLE_RUN": str(run_index),
+               "B3_ORACLE_SEED": str(int(sha256(f"{plan['competition_id']}:{run_index}")[:8], 16))}
+        code, out, err, cmd = run_command(args.oracle_command, values, args.max_output_mb, env)
+        found = SCORE_RE.findall(out)
+        runs.append({"run": run_index, "exit_code": code, "score": float(found[-1]) if found else None,
+                     "stdout_sha256": sha256(out), "argv": cmd})
+        passed = passed and code == 0
+        if found:
+            scores.append(float(found[-1]))
+    worst = None
+    if scores:
+        worst = min(scores) if args.oracle_direction == "max" else max(scores)
+    return {"passed": passed, "score": worst, "runs": runs}
+
+
+def blind_review(args, plan, cands):
+    ordered = sorted(cands, key=lambda c: sha256(plan["competition_id"] + c["id"]))
+    letters = {chr(ord("A") + i): c["id"] for i, c in enumerate(ordered)}
+    blocks = "\n\n".join(f"## {letter}\n{current_text(next(c for c in cands if c['id'] == cid))}"
+                         for letter, cid in letters.items())
+    prompt = (f"You did not write any candidate. Judge them blind for this task:\n{plan['task']}\n\n"
+              f"Read the work, not its claims. End with one line `selected: <letter>`.\n\n{blocks}")
+    prompt_file = pathlib.Path(args.output) / "_prompts" / "blind_review.md"
+    write_text(prompt_file, prompt)
+    code, out, _, _ = run_command(args.review_command, {"prompt_file": str(prompt_file),
+                                                        "competition_id": plan["competition_id"]},
+                                  args.max_output_mb)
+    write_text(pathlib.Path(args.output) / "blind_review.md", out)
+    found = REVIEW_RE.findall(out) if code == 0 else []
+    return letters.get(found[-1]) if found else None
+
+
+def tally_votes(plan):
+    votes, void = {c["id"]: 0 for c in plan["candidates"]}, []
+    for voter in plan["candidates"]:
+        text = read_text(voter["paths"]["peer_review_round_2"])
+        found = VOTE_RE.findall(text)
+        if not found:
+            continue
+        choice = found[-1].lower()
+        if choice == voter["id"] or choice not in votes:
+            void.append({"voter": voter["id"], "choice": choice})
+            continue
+        votes[choice] += 1
+    return votes, void
+
+
+def rank(args, plan, cands):
+    oracle = {c["id"]: measure(args, plan, c) for c in cands} if args.oracle_command else {}
+    eligible = [c for c in cands if not oracle or oracle[c["id"]]["passed"]]
+    review_pick = blind_review(args, plan, eligible) if args.review_command and len(eligible) > 1 else None
+    votes, void = tally_votes(plan)
+
+    def key(c):
+        score = (oracle.get(c["id"]) or {}).get("score")
+        if score is None:
+            oracle_key = 0.0
+        else:
+            oracle_key = -score if args.oracle_direction == "max" else score
+        return (oracle_key, 0 if c["id"] == review_pick else 1, -votes.get(c["id"], 0), c["id"])
+
+    ordered = sorted(eligible, key=key)
+    return ordered[: plan["choose_count"]], {"oracle": oracle, "review_pick": review_pick,
+                                             "votes": votes, "void_votes": void}
+
+
+def norm(text):
+    return re.sub(r"\s+", " ", text.strip().lower())
+
+
+def union(plan, cands):
+    merged, dropped = {}, []
+    for c in cands:
+        for raw in FINDING_RE.findall(current_text(c)):
+            parts = [p.strip() for p in raw.split("|")]
+            if len(parts) < 3 or not parts[2]:
+                dropped.append({"candidate": c["id"], "finding": raw, "reason": "no reproduction"})
+                continue
+            location, claim, repro = parts[:3]
+            severity = parts[3].lower() if len(parts) > 3 and parts[3] else "medium"
+            k = (norm(location), norm(claim))
+            entry = merged.setdefault(k, {"location": location, "claim": claim, "reproduction": repro,
+                                          "severity": severity, "sources": []})
+            entry["sources"].append(c["id"])
+            if SEVERITY_RANK.get(severity, 9) < SEVERITY_RANK.get(entry["severity"], 9):
+                entry["severity"] = severity
+    findings = list(merged.values())
+    if plan["question_type"] == "audit":
+        findings.sort(key=lambda f: (SEVERITY_RANK.get(f["severity"], 9), f["location"]))
+    contributors = sorted({s for f in findings for s in f["sources"]}) or [c["id"] for c in cands]
+    return findings, dropped, contributors
+
+
+# ---------------------------------------------------------------- main flow
+
+def write_manifest(args, plan, selection=None, extra=None):
+    write_json(pathlib.Path(args.output) / "compete_manifest.json", {
+        "schema_version": "b3ehive.compete.v2",
+        "competition_id": plan["competition_id"],
+        "task": plan["task"],
+        "question_type": plan["question_type"],
+        "competition_shape": plan["shape"],
+        "selection_mode": plan["selection"],
+        "artifact_layout": plan["layout"],
+        "choose_count": plan["choose_count"],
+        "rounds": plan["rounds"],
+        "candidate_ids": [c["id"] for c in plan["candidates"]],
+        "failed": {c["id"]: c["failed"] for c in plan["candidates"] if c["failed"]},
+        "oracle": {"command": args.oracle_command or None, "runs": args.oracle_runs,
+                   "direction": args.oracle_direction},
+        "blind_review": bool(args.review_command),
+        "selected_ids": selection or [],
+        "handoff": {"mode": args.handoff_mode, "source_item_id": args.source_item_id or None,
+                    "source_loop_id": args.source_loop_id or None,
+                    "parent_lease_ref": args.parent_lease_ref or None, "state": "[_]"},
+        **(extra or {}),
+    })
+
+
 def orchestrate(args):
-    output = pathlib.Path(args.output or f"competition-runs/{dt.datetime.now().strftime('%Y%m%d-%H%M%S')}")
-    args.output = str(output)
-    require_free_space(output.parent if output.parent != pathlib.Path("") else pathlib.Path("."), args.min_free_gb)
+    out = pathlib.Path(args.output)
+    out.mkdir(parents=True, exist_ok=True)
+    require_free_space(out, args.min_free_gb)
     plan = build_plan(args)
-    for candidate in plan["candidates"]:
-        candidate["paths"]["implementation_dir"].mkdir(parents=True, exist_ok=True)
+    for c in plan["candidates"]:
+        c["paths"]["dir"].mkdir(parents=True, exist_ok=True)
+    decide = [f"DECIDE question_type={plan['question_type']} because {args.why or 'caller supplied'}",
+              f"DECIDE shape={plan['shape']} candidates={len(plan['candidates'])} choose={plan['choose_count']} rounds={plan['rounds']}",
+              f"DECIDE oracle={'command' if args.oracle_command else 'none'} runs={args.oracle_runs} review={'blind' if args.review_command else 'none'}"]
+    write_text(out / "decisions.log", "\n".join(decide))
+    write_text(out / "classification.md",
+               f"# Classification\n\nQuestion type: {plan['question_type']}\nCompetition shape: {plan['shape']}\n"
+               f"Selection mode: {plan['selection']}")
+    write_manifest(args, plan)
 
-    write_initial_manifest(output, plan, args)
-    write_text(output / "classification.md", f"# Classification\n\nQuestion type: {plan['question_type']}\nCompetition shape: {plan['competition_shape']}\nSelection mode: {plan['selection_mode']}")
+    run_stage(args, plan, "proposal", "result", plan["candidates"],
+              lambda c, peers: stage_prompt("proposal", plan, c, peers))
+    if not live(plan):
+        write_text(out / "summary.md", "# Compete Failed\n\nNo candidate produced a valid proposal.")
+        write_manifest(args, plan)
+        raise RuntimeError("no valid candidate proposals")
 
-    max_workers = max(1, min(args.budget_workers, len(plan["candidates"])))
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {}
-        for candidate in plan["candidates"]:
-            prompt = build_candidate_prompt("proposal", plan, candidate)
-            futures[
-                executor.submit(
-                    run_agent,
-                    args,
-                    plan,
-                    agent_id=candidate["agent_id"],
-                    candidate_id=candidate["id"],
-                    stage="proposal",
-                    prompt=prompt,
-                    output_file=candidate["paths"]["result"],
-                )
-            ] = candidate
-        for future in concurrent.futures.as_completed(futures):
-            candidate = futures[future]
-            try:
-                write_text(candidate["paths"]["result"], future.result())
-            except Exception as exc:
-                write_text(candidate["paths"]["failure"], str(exc))
-        ensure_output_budget(output, args.max_output_mb)
+    for c in plan["candidates"]:
+        write_text(c["paths"]["verification"], "Measured by the oracle at selection." if args.oracle_command
+                   else "No oracle supplied; selection uses blind review and votes.")
+    write_text(out / "verification.md", read_text(plan["candidates"][0]["paths"]["verification"]))
 
-    if all(read_text(candidate["paths"]["failure"]) and not read_text(candidate["paths"]["result"]) for candidate in plan["candidates"]):
-        write_text(output / "summary.md", "# Compete Cron Failed\n\nNo valid candidate proposals were produced.")
-        raise RuntimeError("no valid candidate proposals were produced")
+    if plan["rounds"] >= 1:
+        run_stage(args, plan, "peer_review_round_1", "peer_review_round_1", live(plan),
+                  lambda c, peers: stage_prompt("peer_review_round_1", plan, c, peers))
+        reviews = {c["id"]: read_text(c["paths"]["peer_review_round_1"]) for c in plan["candidates"]}
+        run_stage(args, plan, "revision_round_1", "revision_round_1", live(plan),
+                  lambda c, peers: stage_prompt("revision_round_1", plan, c, peers,
+                                                "\n\n".join(t for i, t in reviews.items() if i != c["id"] and t)))
+        if plan["selection"] == "rank":
+            run_stage(args, plan, "peer_review_round_2", "peer_review_round_2", live(plan),
+                      lambda c, peers: stage_prompt("peer_review_round_2", plan, c, peers))
+    if not live(plan):
+        write_text(out / "summary.md", "# Compete Failed\n\nEvery candidate failed a later stage.")
+        write_manifest(args, plan)
+        raise RuntimeError("no candidate survived the review stages")
 
-    verifier_report = run_agent(
-        args,
-        plan,
-        agent_id=args.verifier_agent,
-        candidate_id="verifier",
-        stage="initial_verification",
-        prompt=build_verifier_prompt(plan),
-        output_file=output / "verification.md",
-    )
-    write_text(output / "verification.md", verifier_report)
-    for candidate in plan["candidates"]:
-        write_text(candidate["paths"]["verification"], verifier_report)
-
-    reviews_1 = {}
-    for candidate in plan["candidates"]:
-        peers = [peer for peer in plan["candidates"] if peer["id"] != candidate["id"]]
-        text = run_agent(
-            args,
-            plan,
-            agent_id=candidate["agent_id"],
-            candidate_id=candidate["id"],
-            stage="peer_review_round_1",
-            prompt=build_candidate_prompt("peer_review_round_1", plan, candidate, peers, verifier_report),
-            output_file=candidate["paths"]["peer_review_round_1"],
-        )
-        reviews_1[candidate["id"]] = text
-        write_text(candidate["paths"]["peer_review_round_1"], text)
-
-    for candidate in plan["candidates"]:
-        received = "\n\n".join(text for candidate_id, text in reviews_1.items() if candidate_id != candidate["id"])
-        text = run_agent(
-            args,
-            plan,
-            agent_id=candidate["agent_id"],
-            candidate_id=candidate["id"],
-            stage="revision_round_1",
-            prompt=build_candidate_prompt(
-                "revision_round_1",
-                plan,
-                candidate,
-                critiques=received,
-                previous_text=read_text(candidate["paths"]["result"]),
-            ),
-            output_file=candidate["paths"]["revision_round_1"],
-        )
-        write_text(candidate["paths"]["revision_round_1"], text)
-
-    reviews_2 = {}
-    for candidate in plan["candidates"]:
-        peers = [peer for peer in plan["candidates"] if peer["id"] != candidate["id"]]
-        text = run_agent(
-            args,
-            plan,
-            agent_id=candidate["agent_id"],
-            candidate_id=candidate["id"],
-            stage="peer_review_round_2",
-            prompt=build_candidate_prompt("peer_review_round_2", plan, candidate, peers),
-            output_file=candidate["paths"]["peer_review_round_2"],
-        )
-        reviews_2[candidate["id"]] = text
-        write_text(candidate["paths"]["peer_review_round_2"], text)
-
-    selected = select_candidates(plan["selection_mode"], plan["choose_count"], plan["candidates"], reviews_2.values())
-    if not selected:
-        raise RuntimeError("selection produced no candidates")
-    update_manifest_selection(output, selected)
-    write_json(output / "selected.json", {"selected_ids": selected})
-    rejected = [candidate["id"] for candidate in plan["candidates"] if candidate["id"] not in selected]
-    write_json(output / "rejected.json", {"rejected_ids": rejected})
-    write_text(output / "best_run.txt", selected[0])
-
-    for candidate in plan["candidates"]:
-        text = run_agent(
-            args,
-            plan,
-            agent_id=candidate["agent_id"],
-            candidate_id=candidate["id"],
-            stage="repair_synthesis",
-            prompt=build_candidate_prompt(
-                "repair_synthesis",
-                plan,
-                candidate,
-                previous_text=read_text(candidate["paths"]["revision_round_1"]),
-                critiques="\n\n".join(reviews_2.values()),
-                selected_id=selected[0],
-            ),
-            output_file=candidate["paths"]["repair_synthesis"],
-        )
-        write_text(candidate["paths"]["repair_synthesis"], text)
-
-    repairs = ["# Final Repair Assignments", "", f"Selected candidate: {selected[0]}", ""]
-    for candidate in plan["candidates"]:
-        repairs.extend([f"## {candidate['id']}", read_text(candidate["paths"]["repair_synthesis"]) or "(empty)", ""])
-    write_text(output / "final_repairs.md", "\n".join(repairs))
-
-    if plan["selection_mode"] in {"coverage_union", "risk_union"} or plan["choose_count"] == "all_valid":
-        synthesis_title = "Coverage Union"
-        synthesis_body = "\n\n".join(
-            f"## {candidate['id']}\n{read_text(candidate['paths']['revision_round_1']) or read_text(candidate['paths']['result'])}"
-            for candidate in plan["candidates"]
-            if candidate["id"] in selected
-        )
+    extra = {}
+    if plan["selection"] == "union":
+        findings, dropped, selected_ids = union(plan, live(plan))
+        lines = [f"- [{f['severity']}] {f['location']}: {f['claim']} (repro: `{f['reproduction']}`; "
+                 f"from {', '.join(f['sources'])})" for f in findings]
+        write_text(out / "synthesis.md", "# Coverage Union\n\n" + ("\n".join(lines) or "No findings."))
+        write_json(out / "findings.json", {"findings": findings, "dropped": dropped})
+        extra = {"findings": len(findings), "dropped_findings": len(dropped)}
     else:
-        synthesis_title = "Synthesis"
-        synthesis_body = f"Selected candidate: {selected[0]}"
-    write_text(output / "synthesis.md", f"# {synthesis_title}\n\n{synthesis_body}")
-    write_text(
-        output / "summary.md",
-        f"# Compete Cron Summary\n\nTask: {plan['task']}\nQuestion type: {plan['question_type']}\nCompetition shape: {plan['competition_shape']}\nSelected: {', '.join(selected)}\nOutput: {output}",
-    )
-    ensure_output_budget(output, args.max_output_mb)
-    return output, selected
+        chosen, evidence = rank(args, plan, live(plan))
+        selected_ids = [c["id"] for c in chosen]
+        write_json(out / "selection_evidence.json", evidence)
+        extra = {"review_pick": evidence["review_pick"], "votes": evidence["votes"],
+                 "void_votes": evidence["void_votes"]}
+        if not selected_ids:
+            write_text(out / "summary.md", "# Compete Failed\n\nNo candidate passed the oracle.")
+            write_manifest(args, plan, [], extra)
+            raise RuntimeError("no candidate passed the oracle")
+        write_text(out / "synthesis.md", "# Selection\n\n" + "\n".join(f"- {i}" for i in selected_ids))
+
+    write_json(out / "selected.json", {"selected_ids": selected_ids})
+    write_json(out / "rejected.json", {"rejected_ids": [c["id"] for c in plan["candidates"]
+                                                        if c["id"] not in selected_ids]})
+    write_text(out / "best_run.txt", selected_ids[0])
+
+    run_stage(args, plan, "repair_synthesis", "repair_synthesis", live(plan),
+              lambda c, peers: stage_prompt("repair_synthesis", plan, c, peers, ", ".join(selected_ids)))
+    write_text(out / "final_repairs.md", "# Final Repair Assignments\n\n" + "\n\n".join(
+        f"## {c['id']}\n{read_text(c['paths']['repair_synthesis']) or '(none)'}" for c in plan["candidates"]))
+    write_text(out / "summary.md",
+               f"# Compete Summary\n\nTask: {plan['task']}\nQuestion type: {plan['question_type']}\n"
+               f"Shape: {plan['shape']}\nSelected: {', '.join(selected_ids)}\n"
+               f"Failed: {failed_text(plan)}\n"
+               f"State: [_] (the master accepts)")
+    write_manifest(args, plan, selected_ids, extra)
+    return out, selected_ids
+
+
+def parse_args(argv=None):
+    p = argparse.ArgumentParser(description="Run a bounded b3ehive proposal competition.")
+    p.add_argument("--task", required=True)
+    p.add_argument("--output", required=True)
+    p.add_argument("--question-type", required=True, choices=QUESTION_TYPES,
+                   help="Decided by the calling agent; the script never infers it.")
+    p.add_argument("--why", default="", help="Reason recorded in the DECIDE line.")
+    p.add_argument("--shape", choices=SHAPES, default="lanes")
+    p.add_argument("--competition-shape", dest="shape", choices=SHAPES, help=argparse.SUPPRESS)
+    p.add_argument("--proposal-count", type=int, default=3)
+    p.add_argument("--choose-count", default="1", help="Integer or all-valid.")
+    p.add_argument("--rounds", type=int, choices=(0, 1), default=1)
+    p.add_argument("--budget-workers", type=int, default=3)
+    p.add_argument("--artifact-layout", choices=("native", "old_three_way"), default="native")
+    p.add_argument("--runner", choices=("mock", "command"), default="command")
+    p.add_argument("--command", default=os.environ.get("B3EHIVE_AGENT_RUNNER", ""))
+    p.add_argument("--oracle-command", default="")
+    p.add_argument("--oracle-runs", type=int, default=1)
+    p.add_argument("--oracle-direction", choices=("max", "min"), default="max")
+    p.add_argument("--review-command", default="")
+    p.add_argument("--max-output-mb", type=int, default=20)
+    p.add_argument("--min-free-gb", type=int, default=int(os.environ.get("MIN_FREE_GB", "5")))
+    p.add_argument("--handoff-mode", choices=("standalone", "execution_embed", "looper_attempt"), default="standalone")
+    p.add_argument("--source-item-id", default="")
+    p.add_argument("--source-loop-id", default="")
+    p.add_argument("--parent-lease-ref", default="")
+    args = p.parse_args(argv)
+    if args.runner == "command" and not args.command:
+        p.error("--runner command needs --command or B3EHIVE_AGENT_RUNNER; use --runner mock for a dry run")
+    if args.oracle_runs < 1:
+        p.error("--oracle-runs must be at least 1")
+    return args
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Run a bounded b3ehive proposal competition.")
-    parser.add_argument("--task", required=True)
-    parser.add_argument("--output", default="")
-    parser.add_argument("--budget-workers", type=int, default=3)
-    parser.add_argument("--proposal-count", default="auto")
-    parser.add_argument("--choose-count", default="auto")
-    parser.add_argument("--question-type", choices=sorted(QUESTION_TYPES), default="auto")
-    parser.add_argument("--competition-shape", choices=sorted(COMPETITION_SHAPES), default="auto")
-    parser.add_argument("--selection-mode", choices=sorted(SELECTION_MODES), default="auto")
-    parser.add_argument("--artifact-layout", choices=["native", "old_three_way"], default="native")
-    parser.add_argument("--runner", choices=["mock", "command"], default="mock")
-    parser.add_argument("--command", default="")
-    parser.add_argument("--verifier-agent", default="verifier")
-    parser.add_argument("--max-output-mb", type=int, default=20)
-    parser.add_argument("--min-free-gb", type=int, default=30)
-    parser.add_argument("--handoff-mode", choices=["standalone", "execution_embed", "looper_attempt"], default="standalone")
-    parser.add_argument("--source-item-id", default="")
-    parser.add_argument("--source-loop-id", default="")
-    args = parser.parse_args(argv)
-    output, selected = orchestrate(args)
-    print("Compete cron complete")
+    args = parse_args(argv)
+    try:
+        out, selected = orchestrate(args)
+    except RuntimeError as exc:
+        print(f"Compete failed: {exc}", file=sys.stderr)
+        return 3
     print(f"Selected: {', '.join(selected)}")
-    print(f"Output: {output}")
+    print(f"Output: {out}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

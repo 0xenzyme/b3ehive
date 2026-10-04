@@ -1,96 +1,53 @@
-# b3ehive Core Concepts
+# Core Concepts
 
 [中文](concepts.zh-CN.md)
 
-> This document gives new users a compact map of b3ehive's design philosophy and
-> key abstractions.
+## One Arrangement Per Kind Of Work
 
----
+| Work | Skill | Arrangement |
+|---|---|---|
+| hard choice, root cause, audit, coverage | compete | parallel candidates, oracle-first selection, or a deduplicated union |
+| long implementation | execution | one blueprint as a DAG, isolated workers, master acceptance |
+| unknown code, migration, translation, outside knowledge | learn | a locked manifest mapped one to one, or a pinned canon |
+| faster, smaller, cheaper, or cleaner | optimization | measured loops under a frozen oracle, or design research |
+| repeated attempts under a budget | looper | the shared loop and its governance |
 
-## 1. Why A Hive?
+## Three Shared Units
 
-### 1.1 The Feynman Technique
+- **core** (`core/core.md`): seven laws and a verb lexicon, stated once, copied
+  into every skill.
+- **loop** (`looper-cron-builder/loop.md`): the attempt loop: shapes, stop rules,
+  ratchet, ablation switch. Looper owns it; the other skills bind it by name.
+- **generated artifacts**: gates, harnesses, receipts, hooks, cron or flow
+  configs, ledgers. Prompts carry judgment; artifacts carry mechanics.
 
-b3ehive is inspired by Richard Feynman's learning principle:
+## Seven Laws
 
-> **"What I cannot create, I do not understand."**
+1. One authority: one blueprint; `[ ]` open, `[_]` submitted, `[x]` accepted.
+2. Oracle first: each item names its judge before work.
+3. Cite before you claim: outside facts come from a pinned canon.
+4. Accept only what you re-run: receipts, recomputed metrics, fresh inputs.
+5. Lease before you spend: no reward accrues toward pause.
+6. Isolate honestly: one worker, one workspace, every request counted.
+7. Observe instruments; change them apart.
 
-The practical lesson is simple: if you cannot explain or recreate something in
-clear terms, you do not fully understand it yet.
+## Verbs Carry Authority
 
-b3ehive brings that idea to AI agent work. Agents should shape a problem, split
-the work, execute it, validate the result, and leave an inspectable trail that a
-person can repeat or improve.
+Workers claim and submit. Oracles measure. Non-author reviewers judge. The
+master accepts, rejects, and reverts. Looper leases, pauses, and retires. A lint
+rejects any other pairing, so the rule "only the master accepts" lives in one
+table instead of many sentences.
 
-### 1.2 One Agent Is A Voice. A Hive Is An Arrangement.
+## Outside Knowledge
 
-| Traditional AI assistant | b3ehive |
-|---|---|
-| One assistant, one shape | **Five swarm organizations** |
-| Prompt in, answer out | **Checklist -> Worker -> Validator -> Cleanup** |
-| Hidden state | **Inspectable specs, todos, logs, and artifacts** |
-| "Looks done" | **Pass the gate, then checkpoint** |
+- Learn builds a canon: pinned entries with version, hash, level (`V`, `F`,
+  `I`), license, and the decisions they govern. Documentation MCP servers are
+  one source among specs, datasheets, source code, and curated wikis.
+- Every skill cites the canon when a decision rests on an outside fact.
+- Measurement tools (profilers, analyzers) are instruments, probed before use
+  and kept in `instruments.tsv` with a diagnosis playbook.
 
-Different work needs different arrangements:
+## Name
 
-- **Hard decisions or coverage** need **compete**: proposal competition,
-  selection, synthesis, or coverage union.
-- **Long implementation** needs **execution**: blueprint-driven work with
-  checkpoints.
-- **Unknown code, source-to-target conversion, or translation** needs **learn**:
-  understand it until make it.
-- **Mature systems** need **optimization**: design-guided architecture
-  refinement.
-- **Repeated validation, bridge surfaces, or metric movement** need **looper**:
-  resource-aware bridge control.
-
-`LooperLog` is the looper's multi-grain evidence surface. It records
-`TargetObject` movement and `InstrumentObject` quality. Normal execution moves
-the target work; looper also observes whether skills, scaffolds, tools, routes,
-validators, scripts, and ledgers helped, blocked, wasted resources, or failed
-to validate enough. It is not a sixth public skill and it is not a runtime path
-for automatically mutating skills.
-
-b3ehive is not just code generation. It is collective work shaped like the
-scientific method: observe the ground, choose the right organization, run
-bounded cycles, validate honestly, and leave evidence.
-
----
-
-## 2. Blueprint
-
-A blueprint is the single authoritative requirement source for a b3ehive
-workflow.
-
-It is not a static spec. It is a living, executable document with embedded
-checklist state (`[ ]`, `[_]`, `[x]`), dependency DAG, and layer structure.
-Guards read it to decide what can be worked on today, what is blocked, and what
-can be accepted.
-
-> A traditional spec answers "what should be built." A b3ehive blueprint answers
-> "what should be built, what state it is in, what is next, and whether it is
-> currently allowed to proceed."
-
-See [Blueprint](./blueprint.md) for the detailed contract.
-
----
-
-## 3. The Five Skills
-
-| Skill | Core capability | Input | Output |
-|---|---|---|---|
-| `compete-cron-builder` | Multi-proposal competition, selection, union, or repair queue | A local question plus n/m/k budget | Selected candidates, coverage union, repair queue, or blueprint synthesis |
-| `execution-cron-builder` | Continuous blueprint execution | One blueprint | Implemented items and checkpoint commits |
-| `learn-cron-builder` | Source-to-target learning: understand, transform, translate | Source scope, subset, and target contract | Learning notes, transformed artifacts, translations, traceability |
-| `optimization-cron-builder` | Architecture refinement research | Design philosophy and stage blueprint | Research document for each optimization item |
-| `looper-cron-builder` | Resource-aware bridge controller | BridgeSurface or BridgeMetric plus ResourceEnvelope, SideEffectGate, and Validator | Bridge deltas, compact evidence, reward/ROI ledger, pause/resume policy |
-
----
-
-## 4. Name
-
-- **b3** = **B**lueprint, **B**atch, **B**ehavior
-- **hive** = Swarm intelligence
-
-> Choose the right swarm, run bounded work, and leave proof.
-> So called b3ehive.
+`b3` = Blueprint, Batch, Behavior. `hive` = swarm intelligence. Choose the
+arrangement, run bounded work, keep the proof.

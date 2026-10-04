@@ -1,7 +1,7 @@
 {
   "name": "b3ehive",
-  "version": "1.5.0+codex.20260811060051",
-  "description": "Five portable Codex swarm skills for proposal competition, blueprint execution, source learning, optimization, and resource-aware bridge control.",
+  "version": "2.0.0+codex.20261004150348",
+  "description": "Five portable Codex swarm skills for proposal competition, blueprint execution, source and canon learning, measured optimization, and loop governance.",
   "author": {
     "name": "Weiyang",
     "url": "https://github.com/weiyangzen"
@@ -24,8 +24,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "b3ehive",
-    "shortDescription": "Five rigorous swarm skills for Codex.",
-    "longDescription": "b3ehive packages five reusable Codex skills: compete-cron-builder for bounded proposal competitions, execution-cron-builder for blueprint DAG execution, learn-cron-builder for source-to-target learning, optimization-cron-builder for design-guided refinement, and looper-cron-builder for resource-aware bridge control with leases, evidence, rewards, and ROI.",
+    "shortDescription": "Five swarm skills bound by one core and one loop.",
+    "longDescription": "b3ehive packages five Codex skills: compete-cron-builder for oracle-first proposal competitions, execution-cron-builder for blueprint DAG execution with master-only acceptance, learn-cron-builder for understanding, transformation, translation, and canon building, optimization-cron-builder for measured and design-mode optimization, and looper-cron-builder for the shared attempt loop and budget governance.",
     "developerName": "Weiyang",
     "category": "Productivity",
     "capabilities": [
@@ -37,9 +37,9 @@
     "privacyPolicyURL": "https://github.com/weiyangzen/b3ehive/blob/main/PRIVACY.md",
     "termsOfServiceURL": "https://github.com/weiyangzen/b3ehive/blob/main/TERMS.md",
     "defaultPrompt": [
-      "Use b3ehive to create an execution blueprint.",
-      "Use b3ehive to compare routes and evidence.",
-      "Use b3ehive looper for bounded ROI control."
+      "Use b3ehive to execute this blueprint.",
+      "Use b3ehive compete to pick a root cause with an oracle.",
+      "Use b3ehive optimization in measured mode."
     ],
     "brandColor": "#10A37F"
   }

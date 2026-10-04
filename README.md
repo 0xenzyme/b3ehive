@@ -2,204 +2,170 @@
 
 [中文](README.zh-CN.md)
 
-[![Codex Skill](https://img.shields.io/badge/Codex-Skill-blue)](https://github.com/openai/codex)
-[![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-orange)](https://docs.anthropic.com/en/docs/claude-code)
-[![Cursor Skill](https://img.shields.io/badge/Cursor-Skill-black)](https://cursor.com)
-[![Grok Build Skill](https://img.shields.io/badge/Grok%20Build-Skill-red)](https://x.ai/cli)
-[![opencode Skill](https://img.shields.io/badge/opencode-Skill-green)](https://opencode.ai)
-[![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-blue)](https://openclaw.ai)
-[![Hermes Skill](https://img.shields.io/badge/Hermes-Skill-purple)](https://hermes-agent.nousresearch.com)
+**Five swarm skills. One law. One loop.**
+
+[![Codex](https://img.shields.io/badge/Codex-Skill-blue)](https://github.com/openai/codex)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill-orange)](https://docs.anthropic.com/en/docs/claude-code)
+[![Cursor](https://img.shields.io/badge/Cursor-Skill-black)](https://cursor.com)
+[![Grok Build](https://img.shields.io/badge/Grok%20Build-Skill-red)](https://x.ai/cli)
+[![opencode](https://img.shields.io/badge/opencode-Skill-green)](https://opencode.ai)
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-Skill-blue)](https://openclaw.ai)
+[![Hermes](https://img.shields.io/badge/Hermes-Skill-purple)](https://hermes-agent.nousresearch.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-b3ehive provides five portable swarm skills for bounded agent work. Each skill
-defines its inputs, worker organization, validation boundary, evidence, and
-cleanup rule. The same skill directories support Codex, Claude Code, Cursor,
-Grok Build, opencode, OpenClaw, and Hermes.
+b3ehive arranges coding agents into a hive. Each skill is a different arrangement
+for a different kind of work. All five obey one short law, share one attempt
+loop, and accept nothing they have not re-run.
 
-Its design draws on the Feynman Technique: clear explanations, inspectable
-steps, and repeatable evidence expose the current level of understanding.
-Each workflow inspects the task context, selects an organization, runs bounded
-cycles, validates the result, and leaves evidence that another person can
-inspect, repeat, and improve.
+## The Five
 
-## Skills
+| Skill | When | Arrangement |
+|---|---|---|
+| [`compete`](compete-cron-builder/SKILL.md) | a hard choice, a root cause, an audit | parallel candidates; oracle first, then blind review, then votes without self-votes; or a deduplicated union of findings |
+| [`execution`](execution-cron-builder/SKILL.md) | a long implementation | one blueprint as a DAG; isolated workers; the master accepts |
+| [`learn`](learn-cron-builder/SKILL.md) | unknown code, migration, translation, outside knowledge | a locked manifest mapped one to one, or a pinned canon |
+| [`optimization`](optimization-cron-builder/SKILL.md) | faster, smaller, cheaper, cleaner | measured loops under a frozen oracle, or design research |
+| [`looper`](looper-cron-builder/SKILL.md) | repeated attempts under a budget | the shared loop and its governance |
 
-| Skill | English | 中文 | 日本語 |
-|---|---|---|---|
-| `compete-cron-builder` | Runs bounded proposal competitions with `n` workers, `m` proposals, `choose k`, all-valid coverage or risk union, repair queues, blueprint synthesis, and three-way challenge artifacts. | 运行有边界的方案竞争，支持 `n` 个 worker、`m` 个 proposal、`choose k`、全量有效 coverage 或 risk union、修复队列、蓝图综合和三方竞争产物。 | `n` workers、`m` proposals、`choose k`、all-valid coverage / risk union、repair queue、blueprint synthesis、three-way challenge artifact を扱う bounded proposal competition を実行します。 |
-| `execution-cron-builder` | Executes one authoritative blueprint through a DAG, a same-name Gantt Kanban monitor, isolated workers, master validation, checkpoints, and cleanup. | 通过 DAG、同名 Gantt Kanban 监控、隔离 worker、master 验证、checkpoint 和 cleanup 执行一个权威 blueprint。 | 一つの authoritative blueprint を DAG、同名 Gantt Kanban monitor、isolated worker、master validation、checkpoint、cleanup で実行します。 |
-| `learn-cron-builder` | Converts a bounded source scope into validated code-to-human notes, strict subset learning, code-to-code transforms, or routed human-language translations. | 把有边界的 source scope 转成经验证的 code-to-human notes、严格 subset learning、code-to-code transform 或带 route 的人类语言翻译。 | bounded source scope を、検証済みの code-to-human notes、strict subset learning、code-to-code transform、route 付き翻訳へ変換します。 |
-| `optimization-cron-builder` | Converts a design philosophy into a bounded `Stage_*_AR_Blueprint.md` and one architecture-refinement research document per item. Product-code implementation remains downstream. | 根据 design philosophy 生成有边界的 `Stage_*_AR_Blueprint.md` 和逐项 architecture-refinement research doc；产品代码实施属于后续工作。 | design philosophy から bounded `Stage_*_AR_Blueprint.md` と項目別 architecture-refinement research document を生成します。product-code implementation は後続工程です。 |
-| `looper-cron-builder` | Builds resource-aware bridge controllers around DAG nodes, bridge surfaces, metrics, nested skill attempts, and operator signals, with leases, side-effect gates, compact evidence, rewards, ROI, no-reward pause, and re-funded resume. | 围绕 DAG 节点、bridge surface、指标、嵌套 skill attempt 和 operator signal 构建资源感知 bridge controller，包含 lease、副作用门、紧凑证据、reward、ROI、无奖励暂停和再注资恢复。 | DAG node、bridge surface、metric、nested skill attempt、operator signal の周りに、lease、side-effect gate、compact evidence、reward、ROI、no-reward pause、re-funded resume を持つ resource-aware bridge controller を構築します。 |
+## How It Holds Together
 
-## Dual-Cursor Checklist Protocol
+```text
+core/core.md ─────────── seven laws + verb lexicon ──┐
+                                                     ├── copied into every skill
+looper-cron-builder/loop.md ── the attempt loop ─────┘
 
-Execution and learn workflows use one progress grammar:
+SKILL.md  ── judgment: when, how to split, which oracle, which shape, when to stop
+artifacts ── mechanics: gates, harnesses, receipts, hooks, cron and flow configs
+```
 
-- `[ ]` means unfinished and available for a worker claim.
-- `[_]` means worker self-tested; output and evidence await master integration
-  or curation.
-- `[x]` means master accepted after validation, integration, and reconciliation.
+Prompts carry judgment. Generated artifacts carry mechanics. A rule that must
+never break becomes a generated check, not a repeated sentence.
 
-Workers may move only `[ ] -> [_]`. The master lane alone may move
-`[_] -> [x]`. Cleanup requires zero `[ ]` and zero `[_]` items. Todos, ledgers,
-progress summaries, and status commands preserve these exact marks. Extra queue
-labels may add detail but cannot replace the checkbox state.
+## Seven Laws
+
+1. **One authority.** One blueprint. `[ ]` open, `[_]` submitted, `[x]` accepted.
+2. **Oracle first.** Each item names its judge before work begins.
+3. **Cite before you claim.** Outside facts come from a pinned canon.
+4. **Accept only what you re-run.** Receipts, recomputed metrics, fresh inputs.
+5. **Lease before you spend.** No reward accrues toward pause.
+6. **Isolate honestly.** One worker, one workspace, every request counted.
+7. **Observe instruments; change them apart.**
+
+Verbs carry authority. Workers *claim* and *submit*; oracles *measure*;
+non-author reviewers *judge*; the master *accepts*, *rejects*, and *reverts*;
+looper *leases*, *pauses*, and *retires*. A lint rejects any other pairing.
+
+## The Loop
+
+```text
+attempt ─ receipt ─ ADVANCED | STALLED | REGRESSED
+   ▲                         │
+   │   two stalls: replan    │   three: pause
+   └─ ratchet: keep only what the oracle measures better; else revert
+```
+
+Shapes: `single`, `relay` (model families alternate, fresh sessions, the
+repository is the memory), `review` (a fresh, read-only, non-author reviewer each
+round), `lanes` (parallel attempts, compete selects). `B3_LOOP=full|single|null`
+swaps the loop for ablation.
+
+## Outside Knowledge
+
+- **Canon.** Learn builds pinned entries from documentation MCP servers, specs,
+  datasheets, source, and curated wikis. Each entry records version, hash, level
+  (`V` primary, `F` community, `I` inferred), license, and the decisions it
+  governs. Skills cite entries when a decision needs them.
+- **Instruments.** Profilers and analyzers are probed before use and listed in
+  `instruments.tsv` with a diagnosis playbook.
+
+b3ehive bundles no domain knowledge. Domain packs, such as a CUDA docs MCP
+server, a kernel wiki, or an Nsight Compute skill, enter through canon and
+instruments.
 
 ## Install
 
-Clone the repository:
-
 ```bash
-git clone https://github.com/weiyangzen/b3ehive.git
+git clone -b v2 https://github.com/weiyangzen/b3ehive.git && cd b3ehive
+scripts/install_skills.sh --target all --scope user --link
 ```
 
-### Codex Plugin
-
-The Codex plugin package is under
-[`plugins/b3ehive`](plugins/b3ehive). The marketplace catalog is
-[`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json).
-[The plugin contract](docs/codex-plugin.md) covers installation, maintenance,
-validation, and release.
-
-Install from this repository checkout:
-
-```bash
-codex plugin marketplace add .
-codex plugin add b3ehive@b3ehive
-```
-
-Install from GitHub:
-
-```bash
-codex plugin marketplace add weiyangzen/b3ehive
-codex plugin add b3ehive@b3ehive
-```
-
-Start a new Codex thread after installation so the five bundled skills load:
-
-```text
-Use b3ehive to create an execution blueprint.
-Use b3ehive to compare routes and evidence.
-Use b3ehive looper for bounded ROI control.
-```
-
-After editing a root skill directory, sync the plugin package before release:
-
-```bash
-scripts/sync_codex_plugin.sh
-```
-
-### Portable Skills
-
-Install all five skills for Codex, Claude Code, Cursor, Grok Build, opencode,
-OpenClaw, and Hermes:
-
-```bash
-cd b3ehive
-scripts/install_skills.sh --target all --scope user
-```
-
-Install one target:
-
-```bash
-scripts/install_skills.sh --target codex --scope user
-scripts/install_skills.sh --target claude --scope user
-scripts/install_skills.sh --target cursor --scope user
-scripts/install_skills.sh --target grok --scope user
-scripts/install_skills.sh --target opencode --scope user
-scripts/install_skills.sh --target openclaw --scope user
-scripts/install_skills.sh --target hermes --scope user
-```
-
-Install all five skills inside a project:
-
-```bash
-scripts/install_skills.sh --target all --scope project --project-dir /path/to/repo
-```
-
-[The platform contract](docs/agent-platforms.md) defines the portable layout:
+`--link` symlinks each skill to the checkout, so `git pull` updates every
+platform. Without it, copies carry a version stamp that `bin/b3ehive doctor`
+checks.
 
 | Target | User skill path |
 |---|---|
-| Codex | `~/.codex/skills/<skill>/SKILL.md` |
-| Claude Code | `~/.claude/skills/<skill>/SKILL.md` |
-| Cursor | `~/.cursor/skills/<skill>/SKILL.md` |
-| Grok Build | `~/.grok/skills/<skill>/SKILL.md` |
-| opencode | `~/.config/opencode/skills/<skill>/SKILL.md` |
-| OpenClaw | `~/.openclaw/skills/<skill>/SKILL.md` |
-| Hermes | `~/.hermes/skills/<skill>/SKILL.md` |
+| Codex | `~/.codex/skills/<skill>/` |
+| Claude Code | `~/.claude/skills/<skill>/` |
+| Cursor | `~/.cursor/skills/<skill>/` |
+| Grok Build | `~/.grok/skills/<skill>/` |
+| opencode | `~/.config/opencode/skills/<skill>/` |
+| OpenClaw | `~/.openclaw/skills/<skill>/` |
+| Hermes | `~/.hermes/skills/<skill>/` |
 
-### Cursor and Grok Build Adaptation
-
-The five skills keep one `SKILL.md` body. Cursor and Grok Build were added as
-first-class install targets, discovery paths, agent descriptors, and generated
-cron runners. They do not fork the workflow contract.
-
-- Cursor loads `~/.cursor/skills/<skill>/SKILL.md` or project
-  `.cursor/skills/<skill>/SKILL.md`. Mention the skill by name.
-- Generated Cursor workers call `scripts/run_cursor_agent.py`, which uses the
-  Cursor SDK `Agent.prompt` local runtime and requires `CURSOR_API_KEY`.
-- Grok Build loads `~/.grok/skills/<skill>/SKILL.md` or project
-  `.grok/skills/<skill>/SKILL.md`. Mention the skill or use `/skill-name`.
-- Generated Grok workers use
-  `grok --always-approve --cwd "{workspace}" --prompt-file "{prompt_file}"`.
-  Headless and ACP entry points start in ask unless that flag or
-  `_meta.yoloMode` is set. The default runner also sets
-  `GROK_TELEMETRY_ENABLED=0` and `GROK_TELEMETRY_TRACE_UPLOAD=0`.
-- Platform contract: [docs/agent-platforms.md](docs/agent-platforms.md).
+Codex plugin: `codex plugin marketplace add weiyangzen/b3ehive` then
+`codex plugin add b3ehive@b3ehive`. Platform details:
+[docs/agent-platforms.md](docs/agent-platforms.md).
 
 ## Use
 
-Run a three-way competition with the mock runner:
+```text
+Use execution-cron-builder for this repository and this blueprint.
+Use compete-cron-builder to pick the root cause; the oracle is `make test`.
+Use learn-cron-builder to build a canon from these specs for BLUEPRINT.md.
+Use optimization-cron-builder in measured mode on this kernel.
+Use looper-cron-builder to govern these loops within a weekly budget.
+```
+
+A competition from the shell:
 
 ```bash
-python3 compete-cron-builder/scripts/compete_cron_builder.py \
-  --task "Implement a thread-safe rate limiter" \
-  --output ./competition-runs/rate-limiter \
-  --competition-shape three_way_challenge \
-  --artifact-layout old_three_way \
-  --runner mock \
-  --min-free-gb 0
+bin/b3ehive compete --question-type precision \
+  --oracle-command 'make check CANDIDATE={candidate_dir}' --oracle-runs 3 \
+  "Pick the root cause of the failing scheduler test"
 ```
 
-Invoke a repository-local workflow by skill name:
+The runner comes from `B3EHIVE_AGENT_RUNNER`; `--mock` runs a dry competition.
 
-```text
-Use compete-cron-builder to compare local proposals, synthesize a blueprint, or run coverage union.
-Use execution-cron-builder for this repo and this blueprint.
-Use learn-cron-builder to learn a codebase, transform source artifacts, or translate docs.
-Use optimization-cron-builder with this design philosophy.
-Use looper-cron-builder to add resource-aware bridge controllers around these bridge surfaces and metrics.
+## Check
+
+```bash
+scripts/check_all.sh        # sync, lint, unit tests, layout and platform checks
+bin/b3ehive doctor --repo .  # stale installs and controllers
 ```
 
-Claude Code also accepts slash syntax such as
-`/execution-cron-builder`. Cursor discovers `~/.cursor/skills/` and
-`.cursor/skills/`. Grok Build discovers `~/.grok/skills/` and `.grok/skills/`,
-and also reads Cursor skill directories when that scanner is enabled.
-opencode discovers `SKILL.md` directories from `.opencode/skills/`,
-`~/.config/opencode/skills/`, `.claude/skills/`, and `~/.claude/skills/`.
-OpenClaw and Hermes accept `skills/<skill>/SKILL.md` for repository or tap
-installs.
+`evals/scenarios.json` holds fifteen behavior scenarios, three per skill, and the
+ablation matrix that decides which mechanisms stay.
 
-## Repository Map
+## v2 At A Glance
 
-- [compete-cron-builder](compete-cron-builder/SKILL.md) — bounded proposal competition, selection, synthesis, and coverage union
-- [execution-cron-builder](execution-cron-builder/SKILL.md) — blueprint-driven implementation cron
-- [learn-cron-builder](learn-cron-builder/SKILL.md) — source-to-target learning, transform, and translation cron
-- [optimization-cron-builder](optimization-cron-builder/SKILL.md) — design-guided optimization cron
-- [looper-cron-builder](looper-cron-builder/SKILL.md) — resource-aware bridge controller cron
-- [SKILL.md](SKILL.md) — skill index and removed-tool cleanup note
-- [plugins/b3ehive](plugins/b3ehive/README.md) — Codex plugin package
-- [docs/README.md](docs/README.md) — documentation index and language contract
-- [docs/concepts.md](docs/concepts.md) — core concepts
-- [docs/blueprint.md](docs/blueprint.md) — blueprint contract and lifecycle
-- [docs/codex-plugin.md](docs/codex-plugin.md) — Codex plugin contract
-- [docs/agent-platforms.md](docs/agent-platforms.md) — platform compatibility contract
-- [config.yaml](config.yaml) — root configuration
+| | v1 | v2 |
+|---|---|---|
+| SKILL.md bodies | 11,461 words | 3,432 words |
+| execution load per invocation | ~11.1k tokens | ~3.0k tokens |
+| shared contract | ~3.8k tokens, inside looper | ~1.1k tokens, core + loop, copied into each skill |
+| acceptance | self-test plus repository gates | oracle per item, receipts, master re-run, fresh inputs |
+| outside knowledge | — | canon and instruments |
+| optimization | research documents | measured mode plus design mode |
+| compete selection | first ids; self-votes counted; keyword-guessed question type | oracle, blind review, votes without self-votes; caller decides |
+| checks | vocabulary presence | structure and lexicon lint, unit tests, behavior evals |
+
+Rules moved out of skill bodies live in each skill's `references/lessons.md`.
+
+## Repository
+
+- `core/`: shared law and substrate guide (sources of the copies)
+- `*-cron-builder/`: the five skills
+- `evals/`: behavior scenarios and ablation matrix
+- `templates/`: blueprint, oracle, canon, instruments
+- `tests/`: unit tests for the compete script and the lint
+- `scripts/`: install, sync, lint, checks
+- `plugins/b3ehive/`: Codex plugin package
+- `docs/`: [concepts](docs/concepts.md), [blueprint](docs/blueprint.md),
+  [platforms](docs/agent-platforms.md), [Codex plugin](docs/codex-plugin.md)
 
 ## Name And License
 
-`b3` means Blueprint, Batch, Behavior. `hive` means swarm intelligence.
+`b3` = Blueprint, Batch, Behavior. `hive` = swarm intelligence.
 
 MIT © Weiyang ([@weiyangzen](https://github.com/weiyangzen))

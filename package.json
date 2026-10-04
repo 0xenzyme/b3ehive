@@ -1,9 +1,9 @@
 {
   "name": "b3ehive",
   "slug": "b3ehive",
-  "displayName": "b3ehive - Five Swarm Algorithms",
-  "version": "1.6.0",
-  "description": "A hive of five Codex, Claude Code, Cursor, Grok Build, opencode, OpenClaw, and Hermes compatible agent swarm skills: compete, execution, learn, optimization, and looper cron builders.",
+  "displayName": "b3ehive - Five Swarm Skills",
+  "version": "2.0.0",
+  "description": "Five portable agent swarm skills for Codex, Claude Code, Cursor, Grok Build, opencode, OpenClaw, and Hermes: compete, execution, learn, optimization, and looper, bound by one seven-law core and one shared loop.",
   "author": "weiyangzen",
   "license": "MIT",
   "homepage": "https://github.com/weiyangzen/b3ehive",
@@ -37,7 +37,10 @@
     "optimization",
     "looper",
     "roi",
-    "resource-aware"
+    "resource-aware",
+    "oracle",
+    "canon",
+    "measured-optimization"
   ],
   "engines": {
     "openclaw": ">=2026.2.0"
@@ -61,7 +64,12 @@
     "README.md",
     "PRIVACY.md",
     "TERMS.md",
-    "LICENSE"
+    "LICENSE",
+    "core/",
+    "evals/",
+    "tests/",
+    "VERSION",
+    "config.yaml"
   ],
   "openclaw": {
     "entry": "SKILL.md",
@@ -135,5 +143,11 @@
       "looper-cron-builder"
     ],
     "installRoot": "~/.hermes/skills"
+  },
+  "scripts": {
+    "check": "scripts/check_all.sh",
+    "lint": "python3 scripts/lint_skills.py",
+    "sync": "bin/b3ehive sync",
+    "test": "python3 -m unittest discover -s tests"
   }
 }

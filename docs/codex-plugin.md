@@ -63,7 +63,7 @@ Use compete-cron-builder to compare local proposals and synthesize a blueprint.
 Use execution-cron-builder for this repo and this blueprint.
 Use learn-cron-builder to learn this source scope into validated docs.
 Use optimization-cron-builder with this design philosophy.
-Use looper-cron-builder to add bounded ROI control around these bridge surfaces.
+Use looper-cron-builder to govern these loops with leases and ROI.
 ```
 
 Codex loads plugin skills for new sessions. If a session was already open before
@@ -104,12 +104,14 @@ scripts/sync_codex_plugin.sh
 
 1. Edit the root skill directory, for example
    `execution-cron-builder/SKILL.md`.
-2. Run `scripts/sync_codex_plugin.sh`.
-3. Review the generated diff under `plugins/b3ehive/skills/`.
-4. Update `plugins/b3ehive/.codex-plugin/plugin.json`, `package.json`,
+2. Edit shared law in `core/core.md` and the loop in
+   `looper-cron-builder/loop.md`; never edit their copies.
+3. Run `scripts/sync_codex_plugin.sh`; it syncs core and loop first.
+4. Review the generated diff under `plugins/b3ehive/skills/`.
+5. Update `plugins/b3ehive/.codex-plugin/plugin.json`, `package.json`,
    `README.md`, `PRIVACY.md`, and `TERMS.md` when package metadata, user-facing
    behavior, policy, or legal surface changes.
-5. Run validation before tagging or publishing.
+6. Run validation before tagging or publishing.
 
 Do not edit generated plugin skill copies as the primary source. Changes made
 only under `plugins/b3ehive/skills/` can be overwritten by the next sync.
@@ -120,8 +122,7 @@ Run these checks before release:
 
 ```bash
 jq empty package.json .agents/plugins/marketplace.json plugins/b3ehive/.codex-plugin/plugin.json
-scripts/validate_agent_platforms.sh
-scripts/validate_learn_upgrade.sh
+scripts/check_all.sh
 ```
 
 For plugin packaging changes, also inspect that the marketplace catalog points

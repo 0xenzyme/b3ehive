@@ -56,7 +56,7 @@ Use compete-cron-builder to compare local proposals and synthesize a blueprint.
 Use execution-cron-builder for this repo and this blueprint.
 Use learn-cron-builder to learn this source scope into validated docs.
 Use optimization-cron-builder with this design philosophy.
-Use looper-cron-builder to add bounded ROI control around these bridge surfaces.
+Use looper-cron-builder to govern these loops with leases and ROI.
 ```
 
 Codex 会在新 session 中加载 plugin skills。如果安装或更新前 session 已经打开，测试 discovery 前先启动新 thread。
@@ -90,10 +90,11 @@ scripts/sync_codex_plugin.sh
 ## Maintenance Workflow
 
 1. 编辑 root skill directory，例如 `execution-cron-builder/SKILL.md`。
-2. 运行 `scripts/sync_codex_plugin.sh`。
-3. 检查 `plugins/b3ehive/skills/` 下的 generated diff。
-4. 当 package metadata、用户可见行为、policy 或 legal surface 改变时，更新 `plugins/b3ehive/.codex-plugin/plugin.json`、`package.json`、`README.md`、`PRIVACY.md` 和 `TERMS.md`。
-5. tag 或 publish 前运行验证。
+2. 共享定律只改 `core/core.md`，loop 只改 `looper-cron-builder/loop.md`，不改副本。
+3. 运行 `scripts/sync_codex_plugin.sh`；它先同步 core 与 loop。
+4. 检查 `plugins/b3ehive/skills/` 下的 generated diff。
+5. 当 package metadata、用户可见行为、policy 或 legal surface 改变时，更新 `plugins/b3ehive/.codex-plugin/plugin.json`、`package.json`、`README.md`、`PRIVACY.md` 和 `TERMS.md`。
+6. tag 或 publish 前运行验证。
 
 不要把 `plugins/b3ehive/skills/` 下的 generated copy 当主编辑面。只改 package copy 的内容可能在下一次 sync 时被覆盖。
 
@@ -103,8 +104,7 @@ release 前运行：
 
 ```bash
 jq empty package.json .agents/plugins/marketplace.json plugins/b3ehive/.codex-plugin/plugin.json
-scripts/validate_agent_platforms.sh
-scripts/validate_learn_upgrade.sh
+scripts/check_all.sh
 ```
 
 如果改了 plugin packaging，也检查 marketplace catalog 是否指向 package directory：

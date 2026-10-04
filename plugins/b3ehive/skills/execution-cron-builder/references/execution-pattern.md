@@ -1,7 +1,7 @@
 # Execution Controller Pattern
 
-Use this reference to turn the skill contracts into repository-local code. All
-names and paths below are placeholders.
+On-demand detail for `SKILL.md`. Names and paths are placeholders. Sections
+marked v1 text were moved verbatim from the v1 SKILL.md.
 
 ## 1. Frozen Specification
 
@@ -16,7 +16,182 @@ Validate portability by generating against at least two fixture repositories
 whose names, languages, blueprint locations, item IDs, validators, and route
 settings differ. Neither generated tree may contain constants from the other.
 
-## 2. Durable State
+### Portability Hard Gate (v1 text)
+
+This skill is a generator, not a source of target-project constants. Before
+writing code, inspect the target repository and freeze a repository-local
+execution specification containing:
+
+- canonical repository root and authoritative blueprint path
+- deterministic same-prefix Gantt companion path and rendering policy
+- checklist parser and stable item-id rules
+- real dependency edges and any explicit layer semantics
+- task/runtime root and owned-path policy
+- worker result and Master acceptance schemas
+- repository-provided validation profiles and artifact policy
+- completion surfaces that must be reconciled
+- selected agent platform and route policy
+- worker lifecycle mode (`bounded` or `persistent_pool`), desired live-worker
+  target, hard cap, replacement policy, and terminal/stop conditions
+- nested-agent policy and, if enabled, parent/child identity and accounting
+- logical/service-record, agent-execution, startup, live-transport,
+  running-turn, outbound-request-rate, in-flight-request, integration, and
+  validator limits
+- per-execution outstanding-request limit, cooldown, request-storm circuit
+  breaker, and explicit operator reset policy
+- scheduler cadence, lease policy, budgets, and exact cron marker
+
+Do not carry over project names, absolute paths, stage numbers, item prefixes,
+model/provider names, service tiers, concurrency values, GPU counts, validators,
+artifact paths, evidence categories, or completion documents from a previous
+repository. Examples in this skill illustrate shapes only. Generated values
+must come from current repository evidence or explicit operator input.
+
+If a policy cannot be discovered and guessing could alter source, spend money,
+publish data, or delete artifacts, fail closed and name the missing field. For
+low-risk housekeeping limits, use conservative environment-overridable defaults
+and record that they are defaults rather than repository requirements.
+
+### Repository Discovery (v1 text)
+
+Inspect, at minimum:
+
+- repository instructions, current branch/upstream, and dirty worktree state
+- candidate blueprint/checklist files and duplicate requirement sources
+- build, test, lint, typecheck, benchmark, and packaging entry points
+- ownership boundaries, generated files, large artifacts, and ignored paths
+- available CPU, memory, swap, process/PID, disk, and accelerator capacity
+- existing cron entries, locks, ledgers, task roots, and worker processes
+- configured agent CLI and explicit model/effort/service settings
+
+Never reset, stash, checkout, overwrite, or delete unrelated user changes. A
+dirty canonical checkout is an integration condition to preserve, not an excuse
+to clone or rewrite the complete repository per worker. Sync/push behavior is
+enabled only when the repository policy and operator request require it.
+
+## 2. Blueprint Protocol And Same-Name Gantt Kanban Monitoring (v1 text)
+
+Use one authoritative checklist with stable IDs:
+
+- `[ ]`: unclaimed, implementation needed, or repair needed
+- `[_]`: durable worker handoff exists, Master acceptance remains
+- `[x]`: Master integrated the result and passed required gates
+
+The controller or canonical Master may write `[_]` only after harvesting a
+checksum-valid worker handoff. Only the canonical Master writes `[x]`. Treat
+`[ ]` and `[_]` as unfinished for dependency closure and cleanup.
+
+Generate a current todo/status surface from that checklist. It should expose:
+
+- separate counts for `[ ]`, `[_]`, and `[x]`
+- unresolved DAG nodes and justified `depends_on` edges
+- claim, startup, live, handoff, integration, repair, and blocked states
+- claim owner and repository-relative owned paths
+- implementation, validation-preparation, and integration frontiers
+- logical and admitted saturation plus the reason for any underfill
+
+Generate a mandatory same-name Gantt companion to monitor that Kanban. The
+same-name rule preserves the directory, extension, and complete prefix before a
+terminal `Blueprint` filename token, replacing only that token with `Gantt`:
+`<dir>/<name>_Blueprint.<ext>` maps to `<dir>/<name>_Gantt.<ext>`. For example,
+`Stage_3_AR_Blueprint.md` maps to `Stage_3_AR_Gantt.md`; never collapse it to
+`Stage_3_Gantt.md` or rename it to `Stage_3_AR_Blueprint.gantt.md`. If the
+authoritative filename does not end in `Blueprint`, append `_Gantt` to its
+complete stem and freeze that path in the specification. The companion is a
+generated read-only projection, never a second checklist or authority, and
+must contain no mutable checkboxes.
+
+The Gantt must include a renderable Gantt view plus source-relative identity,
+specification/source digests, and generation time. Its monitoring index must
+represent every stable checklist ID exactly once and derive checkbox state,
+dependencies, claim/owner, and startup/live/handoff/integration/repair/blocked
+state from the authoritative checklist and durable ledgers. Use only recorded
+timestamps or estimates explicitly present in repository/operator policy;
+place items without trustworthy timing in a visible unscheduled section rather
+than inventing dates or omitting them. Write the companion atomically after
+state reconciliation and before the scheduler tick returns. A missing,
+misnamed, stale-digest, duplicate-ID, or incomplete companion is a validation
+failure. The Gantt may be the current todo/status surface only when it exposes
+all fields required above; do not create competing generated authorities.
+
+Reject duplicate IDs, missing dependencies, cycles, unsupported checkbox marks,
+and synthetic dependency chains inferred only from document order. If the
+blueprint defines genuine layers, close lower dependencies before higher ones;
+do not turn presentation order into a global barrier.
+
+## 3. Task Isolation (v1 text)
+
+Give every claim a unique root such as:
+
+```text
+<runtime-root>/tasks/<claim-id>/<run-id>/
+  work/
+  codex-home/          # Codex only
+  tmux.sock            # Codex only
+  claim.json
+  result.json
+```
+
+Materialize only declared writable paths and individually justified read-only
+bootstrap files, preserving repository-relative names and independent inodes.
+Never place secrets in the task workspace. Do not copy, clone, rsync, reflink,
+hardlink, archive, or mount the complete repository per claim. Reject legacy
+full-repository worker templates and task-by-repository snapshot layouts.
+
+A task may use a small local Git baseline containing only its allowed files.
+Workers produce repository-relative patches/bundles and checksums; they do not
+merge into or push from the canonical checkout. A bounded repair uses a fresh
+execution/run root and terminal goal. A persistent worker replacement keeps the
+stable logical claim but creates a fresh generation, task identity, process,
+private state, and exactly one new `/goal`; it never overlaps the retired
+generation after liveness is resolved.
+
+Validate before launch and harvest:
+
+- the task root belongs to exactly one claim
+- every file is declared and has an independent inode
+- controller-owned claim metadata is unchanged
+- forbidden runtime paths and full-checkout sentinel combinations are absent
+- changed paths remain inside exact ownership
+
+## 4. Claims And Handoff (v1 text)
+
+The immutable claim card records:
+
+- claim/run/item IDs, mode, dependencies, baseline, and deadline
+- exact writable paths and read-only bootstrap files
+- concise deliverable and repository-specific validation commands
+- allowed/forbidden artifacts and result schema
+- task root, authoritative checkout as a forbidden write target, and retry budget
+
+The result manifest records truthful per-item changed paths, patch checksum,
+commands and outcomes, artifact references, and `status=self_tested`. Require
+only evidence applicable to the current item. Do not invent universal evidence
+categories or mark inapplicable gates passed.
+
+Harvest before pruning. Copy a valid result and patch into immutable
+controller-owned queue storage keyed by claim, baseline, and checksum. A claim
+record is a reservation, not liveness proof. Finished bounded handoffs release
+their TUI. Persistent workers may emit periodic results without becoming
+terminal; the generation remains live only under the exact liveness contract.
+Rework is a new bounded execution unless the persistent worker's frozen
+objective explicitly includes that maintenance cycle. Replacement always uses
+a new generation and exactly one new `/goal` after the old generation is
+retired.
+
+### Handoff And Integration
+
+Workers write only inside task ownership. A valid result is copied with its
+patch into immutable queue storage before liveness pruning. The queue entry
+records baseline, checksum, changed paths, dependencies, conflicts, validation
+hints, retry class, and current state.
+
+Master selects dependency-ready, conflict-safe entries, applies them to the
+preserved canonical checkout, runs repository-provided gates, and updates
+checklist/status/Gantt surfaces. Batch only according to configured limits.
+Failed entries move aside for bounded repair so they do not pin the queue head.
+
+## 5. Durable State
 
 Keep atomic, lock-protected ledgers for:
 
@@ -35,51 +210,55 @@ session, pane PID/start time, private CODEX_HOME, thread ID, and goal ID. Reques
 identity additionally binds execution ID, lease token/epoch, submission receipt,
 provider request/response ID when observable, and terminal disposition.
 
-## 3. Tick Phases
+## 6. Concurrency And Admission (v1 text)
 
-Use short transactions:
+Do not impose a universal worker count. Freeze separate configurable limits:
 
-1. lock and validate specification
-2. harvest results, stop finished bounded transports, and reconcile persistent
-   worker liveness/replacement
-3. reconcile claims and recover promotable startups
-4. validate checklist and DAG
-5. reserve bounded integration and launch work
-6. persist state and release the global lock
-7. perform slow integration/preparation/launch work
-8. lock briefly to merge outcomes and atomically write status and Gantt
+- logical claim cap
+- persistent service-record cap, when the repository has long-running work
+- admitted agent-execution cap
+- startup reservation cap and launch fanout/wave size
+- live TUI transport cap
+- authenticated running-turn cap
+- outbound model/API request starts per rolling interval
+- in-flight model/API request cap
+- exactly one outstanding request per agent execution
+- integration cap
+- CPU and accelerator validator leases
+- exact-path conflict budget
 
-No long TUI wait, model turn, network call, build, test, or benchmark runs under
-the global scheduler lease.
+The operator's requested worker count is both the desired live target and hard
+ceiling when the specification says so. It is not permission to exceed host or
+provider caps. Admission accounts for
+CPU/load, available memory, swap pressure, process/PID headroom, disk budget,
+startup backlog, provider rate limits, current request starts, in-flight
+requests, validator leases, and write conflicts. Never launch lane `N+1` or
+submit request `R+1`.
 
-## 4. Codex Startup
+The launch fanout limits one startup wave; it must not silently become the
+overall concurrency target. When `N` dependency-ready, conflict-safe claims
+exist and every configured cap and measured headroom admits `N`, repeated
+bounded waves converge to the configured agent-execution target. A logical or
+service count becomes that target only through an explicit one-to-one persistent
+worker mapping in the frozen specification. Every unfilled slot
+must have a persisted binding reason rather than a generic "capacity" label.
+Count lanes that finish during ramp-up as completed throughput, not as a launch
+failure.
 
-For one claim:
+Within one scheduler invocation, run a bounded admission pump outside the
+global lease: launch one wave, reconcile startup authentication, recompute
+availability, and immediately launch the next wave. Do not wait for the next
+cron cadence while admissible slots remain. Stop only at the effective target,
+the invocation time budget, or a concrete binding condition; persist which one.
 
-1. Create the task root, independent work files, immutable claim card, and
-   minimal private CODEX_HOME.
-2. Start one tmux server with one interactive Codex TUI process tree.
-3. Record pane PID and `/proc` start time before sending input.
-4. Handle active first-run/trust screens once.
-5. Detect the real idle composer.
-6. Paste one short `/goal` ending in a claim-specific completion token; poll
-   joined composer text until that final token is visible, or fail without
-   submitting partial input.
-7. Acquire atomic turn and request leases, submit once, and persist
-   `goal_submitted` plus the submission receipt.
-8. Read the private thread/goal registries and verify route, cwd, objective, and
-   active status before persisting authenticated transport state.
-9. Apply the frozen lifecycle: terminalize and stop a bounded result, or keep an
-   authenticated persistent generation alive across maintenance cycles. Every
-   continued persistent request stays attributed to that generation and the
-   same caps. Retire a dead generation before admitting its replacement.
+Report logical/service records, agent execution claims, starting lanes, live
+TUI transports, authenticated goals, running turns, request starts per window,
+in-flight requests, outstanding requests, unauthorized continuations, finished
+handoffs, blocked work, breaker state, and integration backlog separately. Do
+not report reservations, OS processes, sockets, goals, turns, or API requests
+as interchangeable concurrency.
 
-If registration is delayed but tmux/PID identity remains exact, preserve the
-starting lane until its hard deadline. A later tick promotes it. If identity is
-lost, route is wrong, the objective mismatches, or the deadline expires, retire
-that task safely and record the failure. Never switch transports.
-
-## 5. Admission
+### Admission Formulas And Pump
 
 Compute separate availability values:
 
@@ -132,26 +311,84 @@ continuations. An open breaker admits no new Enter key, follow-up, resume, or
 fresh launch. Reset requires the repository's explicit audited operator policy;
 ordinary cron/watchdog ticks cannot close it.
 
-## 6. Handoff And Integration
+## 7. Scheduler Tick (v1 text)
 
-Workers write only inside task ownership. A valid result is copied with its
-patch into immutable queue storage before liveness pruning. The queue entry
-records baseline, checksum, changed paths, dependencies, conflicts, validation
-hints, retry class, and current state.
+Keep scheduler ownership short and resumable:
 
-Master selects dependency-ready, conflict-safe entries, applies them to the
-preserved canonical checkout, runs repository-provided gates, and updates
-checklist/status/Gantt surfaces. Batch only according to configured limits.
-Failed entries move aside for bounded repair so they do not pin the queue head.
+1. Acquire one repository-local scheduler lease.
+2. Validate the frozen execution specification and transport surfaces.
+3. Harvest durable handoffs before any stale-claim pruning.
+4. Reconcile dead, mismatched, interrupted, finished, and accepted claims.
+5. Validate blueprint/DAG truth and regenerate status and the same-name Gantt.
+6. Integrate a bounded conflict-safe dependency-ready batch.
+7. Reserve a bounded claim set atomically.
+8. Release the global lease before slow preparation, TUI startup, network work,
+   model turns, tests, or integration validation.
+9. Pump bounded launch waves outside the lease until the frozen live-worker
+   target is full, the tick budget expires, or a concrete block is persisted.
+   In persistent mode, replace dead generations promptly without exceeding the
+   hard cap; derive demand from logical claims only when the specification
+   explicitly maps them one-to-one to persistent workers.
+10. Reacquire briefly to merge outcomes, atomically refresh status and the
+    same-name Gantt from the merged state, and schedule cleanup.
 
-## 7. Process Cleanup
+If using `flock`, close its file descriptor before every tmux launch so workers
+cannot inherit and pin the scheduler lock. A cron tick must be safe to retry and
+must not require one long process to wait for workers to finish.
+
+## 8. Master Integration (v1 text)
+
+The canonical Master owns patch application, conflict resolution, validation,
+checkbox mutation, checkpointing, and optional push. Integrate only when real
+dependencies and ownership conflicts permit it. Batching thresholds are
+repository-configurable heuristics, not skill-wide constants.
+
+Use the repository's actual acceptance policy. Tests, fixtures, docs, generated
+code, binaries, and evidence may be edited or committed when that policy
+requires them. Do not impose foreign rules such as "never commit tests",
+docs-to-code ratios, fixed batch item counts, fixed diff sizes, or model-specific
+evidence gates.
+
+On validation failure, preserve the worker handoff, classify the failure, and
+move it to bounded repair without blocking unrelated ready entries. Advance
+`[_] -> [x]` only after integrated validation and required completion-surface
+reconciliation, including the same-name Gantt projection.
+
+## 9. Budgets And Cleanup (v1 text)
+
+Derive disk/log/process thresholds from repository/operator policy and host
+capacity. Defaults must be environment-overridable and visible in validate-only
+output. Measure allocated disk blocks, exclude symlinks, bound logs, and remove
+only stale roots not referenced by a live claim or durable handoff.
+
+Cleanup is idempotent and repository-scoped. On explicit stop or completion:
+
+- remove only the exact cron marker for this controller
+- stop scheduler processes and every task-local tmux server it owns
+- terminate surviving task-descended subprocesses without broad host-wide kills
+- preserve canonical source and accepted artifacts
+- remove controller runtime only after no live references remain
+- verify cron entries, scheduler processes, task processes, sockets, locks, and
+  runtime roots are absent
+
+Completion cleanup additionally requires zero `[ ]`, zero `[_]`, no pending
+handoff/integration/repair entry, all repository gates passing, and every
+required status surface reconciled.
+
+In `persistent_pool` mode, a cycle handoff, an empty repair queue, or accepted
+implementation checkboxes do not complete the maintenance service. Keep its
+authenticated goal and transport resident until the frozen service stop
+condition is met or the operator explicitly stops it. Do not use bounded-job
+cleanup to terminate a healthy pool between cycles.
+
+### Process Cleanup
 
 Stop the task-local tmux server first. Then inspect recorded process identity,
 cwd, and task-local environment for surviving descendants. Terminate only
 processes attributable to controller-owned task roots. Recheck after one
 scheduler interval to prove no cron source recreated them.
 
-## 8. Observability
+## 10. Observability
 
 For blueprint `<dir>/<name>_Blueprint.<ext>`, atomically generate
 `<dir>/<name>_Gantt.<ext>` as a read-only Kanban projection. Preserve the

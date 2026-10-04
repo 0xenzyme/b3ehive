@@ -140,3 +140,60 @@ policies come from the frozen target specification.
   processes, tmux sockets, locks, and runtime roots are absent.
 - Process matching is task-identity scoped and never kills unrelated host Codex
   sessions or services.
+
+## Generated Validation (v1 text)
+
+Every generated or repaired controller must include tests proving:
+
+- persistent cycle results, empty queues, and waits retain the same active goal
+  and transport without manufacturing running turns or new model requests
+- persistent service cleanup requires its explicit stop condition; accepted
+  implementation checkboxes alone never stop the maintenance pool
+
+- validate-only creates no claim, tmux server, or worker process
+- Codex argv is interactive and cannot resolve to app-server or `codex exec`
+- each simultaneous claim has a distinct task root, tmux socket/session,
+  process identity, writable `CODEX_HOME`, thread, and goal
+- exactly one complete `/goal` is submitted per claim
+- bounded logical/service records create no standing TUI; persistent records
+  create exactly the one-to-one worker generations required by the specification
+- nested agents are rejected unless explicitly specified; when enabled, every
+  child independently consumes all applicable execution/turn/request caps
+- submission is impossible without atomic turn and request leases
+- each execution has at most one outstanding request
+- bounded terminal result stops the exact transport; a persistent result keeps
+  the same exact generation live until stop or failure
+- bounded post-terminal continuation is rejected, while authorized persistent
+  continuation remains attributed and inside request/in-flight caps
+- cron/watchdog never resumes non-admitted goals; persistent reconciliation
+  replaces only proved dead generations and never creates worker `N+1`
+- only fully authenticated claims count as live
+- delayed `goal_submitted` authentication promotes without duplicate launch
+- dead/mismatched startup is released after its bounded deadline
+- harvest occurs before prune and finished TUI servers are stopped
+- scheduler locks are not inherited by workers
+- caps and host admission prevent `N+1`
+- with `N` eligible worker claims, all limits admitting `N`, and
+  mock TUIs that remain live, one admission pump reaches exactly `N`
+  authenticated lanes; a persistent pool later restores exactly `N` after a
+  proved worker death without ever exposing `N+1`
+- request-rate and in-flight caps independently prevent request `R+1` even when
+  transport and logical caps have room
+- request-start storms, connection/in-flight excess, host pressure, and repeated
+  unauthorized continuations trip a fail-closed circuit breaker whose reset is
+  explicit and audited
+- every intentional underfill has a specific persisted dependency, conflict,
+  startup, host-resource, external-limit, route, or validator reason
+- exact terminal `Blueprint` -> `Gantt` naming preserves the complete prefix
+- the Gantt monitoring index covers every checklist ID exactly once, reflects
+  state transitions, rejects stale source/specification digests, and never
+  invents timing for unscheduled items
+- Gantt replacement is atomic and a completed tick cannot leave it stale
+- cleanup removes only controller-owned runtime and processes
+- two fixture repositories with different names, blueprint paths, languages,
+  validators, and route policies produce no cross-project constants
+
+Static validation scans executable launch/config surfaces for forbidden Codex
+subcommands and scans generated artifacts for unexplained absolute paths or
+known foreign project tokens. Negative prose documenting forbidden transports
+is allowed; executable command-shaped occurrences are not.

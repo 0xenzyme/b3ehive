@@ -20,9 +20,12 @@ DEPRECATED_SKILLS=(
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/install_skills.sh [--target codex|claude|cursor|grok|opencode|openclaw|hermes|both|all] [--scope user|project] [--project-dir PATH] [--dry-run]
+Usage: scripts/install_skills.sh [--target codex|claude|cursor|grok|opencode|openclaw|hermes|both|all] [--scope user|project] [--project-dir PATH] [--link] [--dry-run]
 
 Installs b3ehive's five portable SKILL.md directories for Codex, Claude Code, Cursor, Grok Build, opencode, OpenClaw, Hermes, or all supported targets.
+
+--link symlinks each skill to this checkout so updates arrive with `git pull`.
+Copies carry a .b3ehive-version stamp that `bin/b3ehive doctor` checks.
 
 Defaults:
   --target all
@@ -51,6 +54,7 @@ target="all"
 scope="user"
 project_dir="."
 dry_run=0
+link=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -68,6 +72,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --dry-run)
       dry_run=1
+      shift
+      ;;
+    --link)
+      link=1
       shift
       ;;
     -h|--help)
@@ -97,6 +105,19 @@ case "$scope" in
     exit 2
     ;;
 esac
+
+VERSION="$(cat "${ROOT_DIR}/VERSION")"
+
+skill_digest() {
+  (cd "$1" && find . -type f ! -name .b3ehive-version ! -name .DS_Store -print0 | LC_ALL=C sort -z \
+    | xargs -0 shasum -a 256 | shasum -a 256 | cut -c1-16)
+}
+
+stamp_skill() {
+  local skill="$1" dst="$2"
+  printf 'version=%s\nskill=%s\ndigest=%s\n' "$VERSION" "$skill" "$(skill_digest "${ROOT_DIR}/${skill}")" \
+    > "${dst}/.b3ehive-version"
+}
 
 install_root() {
   local platform="$1"
@@ -152,11 +173,16 @@ install_for_platform() {
       exit 1
     fi
     if [[ "$dry_run" -eq 1 ]]; then
-      echo "[dry-run] install ${src} -> ${dst}"
+      echo "[dry-run] install ${src} -> ${dst} (link=${link})"
+    elif [[ "$link" -eq 1 ]]; then
+      rm -rf "$dst"
+      ln -s "$src" "$dst"
+      echo "Linked ${platform}: ${dst} -> ${src}"
     else
       rm -rf "$dst"
       cp -a "$src" "$dst"
-      echo "Installed ${platform}: ${dst}"
+      stamp_skill "$skill" "$dst"
+      echo "Installed ${platform}: ${dst} (${VERSION})"
     fi
   done
 }

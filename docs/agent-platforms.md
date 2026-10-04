@@ -51,6 +51,10 @@ The repository root `SKILL.md` is the b3ehive skill index. Install the five skil
 directories for Codex, Claude Code, Cursor, Grok Build, opencode, OpenClaw, and
 Hermes.
 
+The full Codex worker contract lives in
+`execution-cron-builder/references/transport-codex-tui.md`; runner selection and
+disk guards live in each skill's `references/substrate-cron.md`.
+
 ## Runner Contract
 
 Cron-oriented skills should describe worker execution in terms of an agent

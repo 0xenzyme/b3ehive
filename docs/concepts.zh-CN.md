@@ -1,77 +1,43 @@
-# b3ehive 核心概念
+# 核心概念
 
 [English](concepts.md)
 
-> 本文档整理自社区讨论，用于帮助新用户快速理解 b3ehive 的设计哲学和关键抽象。
+## 一类工作，一种编排
 
----
+| 工作 | Skill | 编排 |
+|---|---|---|
+| 难抉择、根因、审计、覆盖 | compete | 并行候选；oracle 优先择一，或去重取并集 |
+| 长程实现 | execution | 一份 blueprint 化为 DAG；worker 隔离；master 验收 |
+| 陌生代码、迁移、翻译、外部知识 | learn | 锁定 manifest 一一映射，或建 canon |
+| 更快、更小、更省、更简 | optimization | 冻结 oracle 下的测量循环，或设计研究 |
+| 预算内反复尝试 | looper | 共享 loop 与治理 |
 
-## 一、项目理念：为什么是蜂群？
+## 三个共享单元
 
-### 1.1 费曼技巧的启发
+- **core**（`core/core.md`）：七律与定词表；只写一次，同步入每个 skill。
+- **loop**（`looper-cron-builder/loop.md`）：形状、停止规则、ratchet、消融开关；归 looper，余者按名绑定。
+- **生成物**：gate、harness、receipt、hook、cron 或 flow 配置、ledger。提示词载判断，产物载机制。
 
-b3ehive 的灵感来自物理学家理查德·费曼的**费曼技巧**（Feynman Technique）：
+## 七律
 
-> **"What I cannot create, I do not understand."**
->
-> 如果你不能用简单的语言把它教给别人，说明你还没有真正理解它。
+1. 一源：一份 blueprint；`[ ]` 未做，`[_]` 已交，`[x]` 已收。
+2. 先立判官：开工前定 oracle。
+3. 引而后断：外部事实出自 canon。
+4. 复跑方收：receipt、重算指标、新输入。
+5. 先租后用：无奖励累积至暂停。
+6. 隔离如实：一 worker 一工作区，请求逐一计数。
+7. 察器而不改器：仪器之改另立条目。
 
-b3ehive 把这个思想搬到了 AI Agent 的工作中：让 Agent 把问题拆分、执行、验证，留下一条**可检查、可重复、可改进**的路径。最终产出的不只是代码，更是一份"教给人类"的完整证据链。
+## 动词即授权
 
-### 1.2 一个 Agent 是声音，一群 Agent 是编排
+worker claim、submit；oracle measure；非作者评审 judge；master accept、reject、revert；looper lease、pause、retire。lint 拒绝其他搭配，故"只有 master 能收"只存于一张表。
 
-| 传统 AI 助手 | b3ehive |
-|---|---|
-| 一个助手，一种形态 | **五种蜂群组织形态** |
-| Prompt In → Answer Out | **Checklist → Worker → Validator → Cleanup** |
-| 隐藏状态 | **可检查的 Spec、Todo、Log、Artifact** |
-| "看起来完成了" | **通过验证门，才能 Checkpoint** |
+## 外部知识
 
-不同的工作，需要不同的组织方式：
+- learn 建 canon：每条有版本、哈希、级别（`V`、`F`、`I`）、许可与所辖决策。文档 MCP 是来源之一，与规范、datasheet、源码、策展 wiki 并列。
+- 决策依赖外部事实时，各 skill 引 canon。
+- 测量工具（profiler、analyzer）是仪器：先探测再用，记入 `instruments.tsv`，附诊断手册。
 
-- **难以决策或需要覆盖** → 需要 **compete**（proposal competition / coverage union）
-- **长期实现** → 需要**执行**（execution）
-- **未知代码库 / source-to-target 转换 / 翻译** → 需要 **learn**
-- **成熟系统** → 需要**优化**（optimization）
-- **重复反馈 / bridge surface / 指标桥接** → 需要**资源感知 bridge controller**（looper）
+## 名
 
-`LooperLog` 是 looper 内部的多粒度反馈证据面，用来记录 `TargetObject`
-movement 和 `InstrumentObject` quality。正常执行推进任务对象；looper 同时
-观察 skills/scaffolds/tools/routes/validators/scripts/ledgers 是否帮助、阻塞、
-浪费或验证不足。它不是第六个 public skill，也不是运行时自动改 skill 的入口。
-
-b3ehive 不是代码生成器，而是**按科学方法组织的集体工作**：观察地面 → 选择组织形态 → 运行有边界的循环 → 诚实验证 → 留下证据。
-
----
-
-## 二、Blueprint（蓝图）
-
-Blueprint 是 b3ehive 工作流的**唯一权威需求源**，是整个蜂群的"心脏"和"燃料"。
-
-它不是一个静态的 Spec 文档，而是**可执行的、自带状态的、驱动机器工作**的活的规格说明。Blueprint 内嵌 checklist（`[ ]` / `[_]` / `[x]`）、依赖 DAG、分层结构，guard 直接读取它来决定"今天做什么、做到哪了、下一步做什么"。
-
-> **一句话：传统 Spec 回答"做什么"，Blueprint 回答"做什么 + 做到哪了 + 下一步做什么 + 能不能做"。**
-
-详细说明见：[Blueprint 详解](./blueprint.zh-CN.md)
-
----
-
-## 三、五大 Skill 速查
-
-| Skill | 核心能力 | 输入 | 输出 |
-|---|---|---|---|
-| `compete-cron-builder` | 多 proposal 竞争、选优、合并或修复队列 | 一个局部问题 + n/m/k 预算 | selected candidates、coverage union、repair queue 或 blueprint synthesis |
-| `execution-cron-builder` | 按蓝图持续执行代码 | 一个 Blueprint | 逐项实现的代码 + checkpoint 提交 |
-| `learn-cron-builder` | 源到目标学习：understand / transform / translate | source scope + subset + target contract | learning notes、transformed artifacts、translations、traceability |
-| `optimization-cron-builder` | 架构优化研究 | 设计理念 + 阶段蓝图 | 每项优化的研究文档 |
-| `looper-cron-builder` | 资源感知 bridge controller | BridgeSurface / BridgeMetric + ResourceEnvelope + SideEffectGate + Validator | bridge delta、compact evidence、reward/ROI ledger、暂停/恢复策略 |
-
----
-
-## 四、命名由来
-
-- **b3** = **B**lueprint, **B**atch, **B**ehavior
-- **hive** = Swarm intelligence（蜂群智能）
-
-> Choose the right swarm, run bounded work, and leave proof.
-> So called b3ehive.
+`b3` = Blueprint、Batch、Behavior；`hive` = 蜂群。择编排，行有界之事，留证据。

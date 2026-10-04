@@ -64,15 +64,13 @@ b3ehive:
       openclaw: high
       hermes: null
   evaluation:
-    competition_shape: three_way_challenge
-    artifact_layout: old_three_way
-    selection_mode: vote_then_tiebreak
-    dimensions:
-      simplicity: 20
-      speed: 25
-      stability: 25
-      corner_cases: 20
-      maintainability: 10
-  delivery:
-    strategy: auto
-    threshold: 15
+    competition_shape: lanes
+    artifact_layout: native
+    selection_order: [oracle, blind_review, votes_without_self, stable_id]
+    oracle_runs: 1
+  loop:
+    version: v1
+    variant: full        # B3_LOOP=full|single|null
+    governance: on       # B3_LOOPER_GOVERNANCE=on|off
+  core:
+    version: v2

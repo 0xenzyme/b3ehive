@@ -1,74 +1,45 @@
 #!/bin/bash
+# Smoke-test the three-way layout end to end with the mock runner.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT_DIR="${TMPDIR:-/tmp}/b3ehive-compete-three-way-check"
-
-rm -rf "$OUT_DIR"
+OUT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/b3ehive-compete-three-way.XXXXXX")"
+trap 'rm -rf "$OUT_DIR"' EXIT
 
 python3 "${ROOT_DIR}/compete-cron-builder/scripts/compete_cron_builder.py" \
-  --task "Validate old three-way artifact coverage" \
+  --task "Validate three-way artifact coverage" \
   --output "$OUT_DIR" \
-  --budget-workers 3 \
-  --competition-shape three_way_challenge \
+  --question-type precision \
+  --shape three_way_challenge \
   --artifact-layout old_three_way \
   --runner mock \
-  --min-free-gb 0 >/tmp/b3ehive-compete-three-way-check.log
+  --min-free-gb 0 >/dev/null
 
-required_top=(
-  compete_manifest.json
-  classification.md
-  verification.md
-  best_run.txt
-  final_repairs.md
-  summary.md
-  selected.json
-  rejected.json
-  synthesis.md
-)
-
-for file in "${required_top[@]}"; do
-  if [[ ! -f "${OUT_DIR}/${file}" ]]; then
-    echo "ERROR: missing ${file}" >&2
-    exit 1
-  fi
+for file in compete_manifest.json classification.md decisions.log verification.md best_run.txt \
+  final_repairs.md summary.md selected.json rejected.json synthesis.md selection_evidence.json; do
+  [[ -f "${OUT_DIR}/${file}" ]] || { echo "ERROR: missing ${file}" >&2; exit 1; }
 done
 
-best="$(cat "${OUT_DIR}/best_run.txt")"
-case "$best" in
-  run_a|run_b|run_c) ;;
-  *)
-    echo "ERROR: best_run.txt contains invalid candidate: ${best}" >&2
-    exit 1
-    ;;
-esac
-
 for candidate in run_a run_b run_c; do
-  impl="${OUT_DIR}/${candidate}/implementation"
-  for file in result.md verification.md critique_round_1.md update_round_1.md critique_round_2.md final_repair.md; do
-    if [[ ! -f "${impl}/${file}" ]]; then
-      echo "ERROR: missing ${candidate}/implementation/${file}" >&2
-      exit 1
-    fi
+  for file in result.md verification.md critique_round_1.md update_round_1.md critique_round_2.md \
+    final_repair.md receipts.jsonl; do
+    [[ -f "${OUT_DIR}/${candidate}/implementation/${file}" ]] || {
+      echo "ERROR: missing ${candidate}/implementation/${file}" >&2; exit 1; }
   done
 done
 
 python3 - "$OUT_DIR" <<'PY'
-import json
-import pathlib
-import sys
-
+import json, pathlib, sys
 out = pathlib.Path(sys.argv[1])
-manifest = json.loads((out / "compete_manifest.json").read_text())
-selected = json.loads((out / "selected.json").read_text())["selected_ids"]
+m = json.loads((out / "compete_manifest.json").read_text())
 best = (out / "best_run.txt").read_text().strip()
-
-assert manifest["competition_shape"] == "three_way_challenge"
-assert manifest["artifact_layout"] == "old_three_way"
-assert manifest["selection_mode"] == "vote_then_tiebreak"
-assert manifest["candidate_ids"] == ["run_a", "run_b", "run_c"]
-assert manifest["handoff"]["may_mark_x"] is False
-assert selected == [best]
+assert m["schema_version"] == "b3ehive.compete.v2"
+assert m["competition_shape"] == "three_way_challenge"
+assert m["artifact_layout"] == "old_three_way"
+assert m["candidate_ids"] == ["run_a", "run_b", "run_c"]
+assert m["handoff"]["state"] == "[_]"
+assert m["selected_ids"] == [best]
+assert json.loads((out / "selected.json").read_text())["selected_ids"] == [best]
 PY
 
 echo "Compete three-way artifact validation passed."

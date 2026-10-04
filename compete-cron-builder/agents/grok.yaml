@@ -1,4 +1,4 @@
 interface:
-  display_name: "Compete Cron Builder"
-  short_description: "Bounded proposal competition and selection"
-  default_prompt: "Use $compete-cron-builder to run a bounded proposal competition with the right n/m/k shape, selection mode, and artifact layout."
+  display_name: "Compete"
+  short_description: "Oracle-first proposal competition (Grok Build workers)"
+  default_prompt: "Use $compete-cron-builder to run a bounded competition: decide the question type, m, k, and oracle, then select by oracle, blind review, and votes without self-votes."
