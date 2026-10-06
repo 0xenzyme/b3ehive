@@ -5,6 +5,9 @@ description: Defines the shared attempt loop and governs long-running or concurr
 
 # Looper
 
+For a user-facing choice guide, read `docs/skill-selection.md`. Use this skill
+for repeated attempts and budget governance, not for every bounded task.
+
 core v2 · owner of loop v1. Read `references/core.md`, then `loop.md`.
 
 Looper has two jobs. It owns `loop.md`, the one definition of an attempt loop

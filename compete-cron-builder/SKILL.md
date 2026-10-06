@@ -5,6 +5,9 @@ description: Runs bounded proposal competitions with n workers and m candidates,
 
 # Compete
 
+For a user-facing choice guide, read `docs/skill-selection.md`. This skill
+selects proposals or findings; it does not replace the master acceptance step.
+
 core v2 · loop v1, shape `lanes`. Read `references/core.md` and
 `references/loop.md` first; this body adds only competition rules.
 

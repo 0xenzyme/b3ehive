@@ -2,8 +2,13 @@
 
 [中文](blueprint.zh-CN.md)
 
+For a first execution, read [Getting Started](getting-started.md) and
+[Skill Selection and Use](skill-selection.md) first.
+
 A blueprint is the single source of requirements, state, and dependencies for a
 run. Guards read it to decide what is open, blocked, and acceptable.
+
+The blueprint is the authority. A Gantt or todo view is a read-only projection.
 
 ## Item Grammar
 

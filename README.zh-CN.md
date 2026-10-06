@@ -68,6 +68,13 @@ scripts/install_skills.sh --target all --scope user --link
 
 `--link` 以软链接安装，`git pull` 即更新各平台。不加则复制并写版本戳，`bin/b3ehive doctor` 可查漂移。安装路径见 [docs/agent-platforms.zh-CN.md](docs/agent-platforms.zh-CN.md)。
 
+## 从这里开始
+
+- 新安装：[开始使用](docs/getting-started.zh-CN.md)
+- 按任务选择编排：[Skill 选择与使用](docs/skill-selection.zh-CN.md)
+- 理解升级：[v1 到 v2 迁移](docs/migration-v1-v2.zh-CN.md)
+- 编写和审查文档：[写作规范](docs/writing-style.zh-CN.md)
+
 ## 使用
 
 ```text
@@ -85,6 +92,9 @@ bin/b3ehive compete --question-type precision \
 ```
 
 runner 取自 `B3EHIVE_AGENT_RUNNER`；`--mock` 为空跑。
+
+不存在 `b3ehive execution` 或 `b3ehive learn` 命令。这些名称指的是 agent
+加载并遵循的 skill。CLI 提供维护命令和直接运行 competition 的入口。
 
 ## 检查
 

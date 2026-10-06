@@ -2,6 +2,9 @@
 
 [English](concepts.md)
 
+如果需要选择 skill，先阅读 [Skill 选择与使用](skill-selection.zh-CN.md)。本页
+解释共享模型。
+
 ## 一类工作，一种编排
 
 | 工作 | Skill | 编排 |
@@ -11,6 +14,9 @@
 | 陌生代码、迁移、翻译、外部知识 | learn | 锁定 manifest 一一映射，或建 canon |
 | 更快、更小、更省、更简 | optimization | 冻结 oracle 下的测量循环，或设计研究 |
 | 预算内反复尝试 | looper | 共享 loop 与治理 |
+
+五个 skill 是可选的编排，不是必经阶段。一个任务可以只用一个 skill，也可以
+组合少量 skill。
 
 ## 三个共享单元
 

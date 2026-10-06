@@ -2,6 +2,8 @@
 
 [中文](codex-plugin.zh-CN.md)
 
+For the shortest installation path, read [Getting Started](getting-started.md).
+
 b3ehive is packaged as a Codex plugin in `plugins/b3ehive` and exposed through
 the repository marketplace catalog at `.agents/plugins/marketplace.json`.
 
@@ -52,6 +54,7 @@ codex plugin add b3ehive@b3ehive
 ```
 
 Start a new Codex thread after installation so Codex can load the plugin skills.
+Use [Skill Selection and Use](skill-selection.md) for the first prompt.
 
 ## Usage
 

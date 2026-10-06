@@ -2,7 +2,11 @@
 
 [English](blueprint.md)
 
+第一次运行前，先阅读[开始使用](getting-started.zh-CN.md)和 [Skill 选择与使用](skill-selection.zh-CN.md)。
+
 blueprint 是一次运行的唯一需求源、状态源、依赖源。guard 据此判定何者可做、何者受阻、何者可收。
+
+blueprint 是权威来源。Gantt 或 todo 视图只是只读投影。
 
 ## 条目语法
 

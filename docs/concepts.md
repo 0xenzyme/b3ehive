@@ -2,6 +2,9 @@
 
 [中文](concepts.zh-CN.md)
 
+Start with [Skill Selection and Use](skill-selection.md) if you need to choose a
+skill. This page explains the shared model.
+
 ## One Arrangement Per Kind Of Work
 
 | Work | Skill | Arrangement |
@@ -11,6 +14,9 @@
 | unknown code, migration, translation, outside knowledge | learn | a locked manifest mapped one to one, or a pinned canon |
 | faster, smaller, cheaper, or cleaner | optimization | measured loops under a frozen oracle, or design research |
 | repeated attempts under a budget | looper | the shared loop and its governance |
+
+The five skills are options, not required stages. A task can use one skill or a
+small combination.
 
 ## Three Shared Units
 

@@ -5,6 +5,10 @@ description: Improves a system against a declared objective. Design mode writes 
 
 # Optimization
 
+For a user-facing choice guide, read `docs/skill-selection.md`. Use measured
+mode when an oracle can measure a target; use design mode for research against a
+design philosophy.
+
 core v2 · loop v1; measured mode binds the frozen benchmark as the oracle and
 keeps the ratchet. Read `references/core.md` and `references/loop.md` first;
 this body adds only optimization rules.

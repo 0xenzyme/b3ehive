@@ -107,6 +107,13 @@ Codex plugin: `codex plugin marketplace add weiyangzen/b3ehive` then
 `codex plugin add b3ehive@b3ehive`. Platform details:
 [docs/agent-platforms.md](docs/agent-platforms.md).
 
+## Start Here
+
+- New installation: [Getting Started](docs/getting-started.md)
+- Choose a task arrangement: [Skill Selection and Use](docs/skill-selection.md)
+- Understand the upgrade: [v1 to v2 Migration](docs/migration-v1-v2.md)
+- Write and review docs: [Writing Style](docs/writing-style.md)
+
 ## Use
 
 ```text
@@ -126,6 +133,10 @@ bin/b3ehive compete --question-type precision \
 ```
 
 The runner comes from `B3EHIVE_AGENT_RUNNER`; `--mock` runs a dry competition.
+
+There is no `b3ehive execution` or `b3ehive learn` command. Those names refer
+to skills that an agent loads and follows. The CLI provides maintenance
+commands and a direct competition runner.
 
 ## Check
 
@@ -162,7 +173,9 @@ Rules moved out of skill bodies live in each skill's `references/lessons.md`.
 - `scripts/`: install, sync, lint, checks
 - `plugins/b3ehive/`: Codex plugin package
 - `docs/`: [concepts](docs/concepts.md), [blueprint](docs/blueprint.md),
-  [platforms](docs/agent-platforms.md), [Codex plugin](docs/codex-plugin.md)
+  [platforms](docs/agent-platforms.md), [Codex plugin](docs/codex-plugin.md),
+  [getting started](docs/getting-started.md), [skill selection](docs/skill-selection.md),
+  [migration](docs/migration-v1-v2.md), and [writing style](docs/writing-style.md)
 
 ## Name And License
 
