@@ -52,7 +52,7 @@ Start with [Skill Selection and Use](skill-selection.md). The short map is:
 | Execute a long implementation | `execution-cron-builder` |
 | Understand, transform, or translate a source scope | `learn-cron-builder` |
 | Improve a measured result or a design | `optimization-cron-builder` |
-| Govern repeated attempts and budgets | `looper-cron-builder` |
+| Set external loop granularity or shared governance | `looper-cron-builder` |
 
 ## Make a First Call
 

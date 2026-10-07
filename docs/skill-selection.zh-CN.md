@@ -8,16 +8,19 @@
 ```mermaid
 flowchart TD
     A[Task] --> B{主要问题是什么？}
-    B -->|比较选择或查找根因| C[compete]
+    B -->|单轮并行比较| C[compete]
     B -->|执行长期实现| D[execution]
     B -->|理解或转换 source scope| E[learn]
-    B -->|改进可测量结果或设计| F[optimization]
-    B -->|治理重复尝试和预算| G[looper]
+    B -->|串行测量改进或设计| F[optimization]
+    B -->|外挂粒度或共享治理| G[looper]
 ```
 
 这张图只用于快速选择。每个 skill 的输入、输出和验收规则见下文。
 
 ## `compete-cron-builder`
+
+`compete` 执行一次有边界的比较轮。它让多个 candidate 并行回答同一个冻结
+问题，再选择结果或合并 findings。
 
 ### 适用场景
 
@@ -166,6 +169,10 @@ manifest 必须精确覆盖 scope。每个输出都必须追溯到 source row。
 
 ## `optimization-cron-builder`
 
+`optimization` 通常串行比较 candidate。它保留 baseline，测量一个 candidate，
+决定保留或回退，再用结果选择下一个 candidate。只有独立 hypothesis 需要同一
+轮比较时，才使用并行 `lanes`。
+
 ### 适用场景
 
 - 目标是更快、更小、更省或更可靠；
@@ -212,8 +219,14 @@ benchmark。
 
 ## `looper-cron-builder`
 
+`looper` 是可选的外挂层。它把 loop 挂到 item、metric 或 surface，并定义 loop
+的粒度。选中的 skill 通常已经内化最小工作单元，不需要为每个最小动作单独定义
+一个 looper。只有 loop 需要明确的 budget、side-effect policy、共享资源边界，
+或需要挂在不同粒度上时，才使用 `looper`。
+
 ### 适用场景
 
+- loop 需要在明确粒度上挂到 item、metric 或 surface；
 - 目标需要重复尝试；
 - 多个 loop 共享预算；
 - 尝试需要 lease、side-effect gate、ROI 或 pause 规则；
@@ -222,6 +235,7 @@ benchmark。
 ### 不适用场景
 
 - 一次 bounded attempt 已经足够；
+- 选中的 skill 已经处理最小工作单元；
 - 没有预算或 stop condition；
 - 任务只是简单实现或审查。
 
@@ -268,7 +282,7 @@ signals。暂停的 loop 必须有新 budget 和新 strategy 才能恢复。
 learn → execution
 compete → execution
 optimization → execution
-looper → 治理重复的 compete、execution 或 optimization run
+looper → 为 compete、execution 或 optimization run 增加外挂粒度或治理
 ```
 
 组合是 workflow 选择，不要求每次都加载五个 skill。

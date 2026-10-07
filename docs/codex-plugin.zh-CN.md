@@ -59,7 +59,8 @@ Use compete-cron-builder to compare local proposals and synthesize a blueprint.
 Use execution-cron-builder for this repo and this blueprint.
 Use learn-cron-builder to learn this source scope into validated docs.
 Use optimization-cron-builder with this design philosophy.
-Use looper-cron-builder to govern these loops with leases and ROI.
+Use looper-cron-builder when an external loop must set granularity or share a
+budget.
 ```
 
 Codex 会在新 session 中加载 plugin skills。如果安装或更新前 session 已经打开，测试 discovery 前先启动新 thread。

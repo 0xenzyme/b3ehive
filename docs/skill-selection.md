@@ -9,17 +9,20 @@ needs more than one arrangement.
 ```mermaid
 flowchart TD
     A[Task] --> B{What is the main problem?}
-    B -->|Compare choices or find a root cause| C[compete]
+    B -->|One-round parallel comparison| C[compete]
     B -->|Execute a long implementation| D[execution]
     B -->|Understand or transform a source scope| E[learn]
-    B -->|Improve a measured result or a design| F[optimization]
-    B -->|Govern repeated attempts and budgets| G[looper]
+    B -->|Serial measured improvement or design| F[optimization]
+    B -->|External granularity or shared governance| G[looper]
 ```
 
 The diagram is a quick choice aid. Read the sections below for the input,
 output, and acceptance rule for each skill.
 
 ## `compete-cron-builder`
+
+`compete` runs a single bounded comparison round. It evaluates parallel
+candidates against one frozen question and selects or unions the results.
 
 ### Use it when
 
@@ -170,6 +173,10 @@ not treat a broad summary as proof of one-to-one coverage.
 
 ## `optimization-cron-builder`
 
+`optimization` normally compares candidates in series. It keeps a baseline,
+measures one candidate, keeps or reverts it, and uses the result to choose the
+next candidate. Parallel `lanes` are an exception for one comparison round.
+
 ### Use it when
 
 - the target is faster, smaller, cheaper, or more reliable;
@@ -216,8 +223,15 @@ benchmark after seeing a candidate result.
 
 ## `looper-cron-builder`
 
+`looper` is an optional external layer. It defines the granularity and
+attachment of a loop to an item, metric, or surface. The selected skill usually
+handles its smallest work unit internally. Use `looper` when the loop itself
+needs an explicit budget, side-effect policy, shared resource envelope, or
+different attachment granularity.
+
 ### Use it when
 
+- a loop must attach to an item, metric, or surface at an explicit granularity;
 - a target needs repeated attempts;
 - several loops share a budget;
 - attempts need leases, side-effect gates, ROI, or pause rules;
@@ -226,6 +240,7 @@ benchmark after seeing a candidate result.
 ### Do not use it when
 
 - one bounded attempt is enough;
+- the selected skill already handles the smallest work unit;
 - there is no budget or stop condition;
 - the task is a simple implementation or review.
 
@@ -273,7 +288,7 @@ Use the smallest combination that matches the work:
 learn → execution
 compete → execution
 optimization → execution
-looper → govern a repeated compete, execution, or optimization run
+looper → add external granularity or governance to a compete, execution, or optimization run
 ```
 
 The combination is a workflow choice. It is not a requirement to load all five

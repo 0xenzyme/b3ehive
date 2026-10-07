@@ -10,11 +10,11 @@ b3ehive 把编码 agent 编成蜂群。五个 skill 各司一类工作；共守�
 
 | Skill | 用于 | 编排 |
 |---|---|---|
-| [`compete`](compete-cron-builder/SKILL.md) | 难抉择、根因、审计 | 并行候选；先 oracle，次盲审，再计票（自投作废）；或发现去重取并集 |
+| [`compete`](compete-cron-builder/SKILL.md) | 单轮方案比较、根因、审计 | 一轮有边界的并行比较；先 oracle，次盲审，再计票（自投作废）；或发现去重取并集 |
 | [`execution`](execution-cron-builder/SKILL.md) | 长程实现 | 一份 blueprint 化 DAG；worker 隔离；master 验收 |
 | [`learn`](learn-cron-builder/SKILL.md) | 陌生代码、迁移、翻译、外部知识 | 锁定 manifest 一一映射，或建 canon |
-| [`optimization`](optimization-cron-builder/SKILL.md) | 更快、更小、更省、更简 | 冻结 oracle 下测量循环，或设计研究 |
-| [`looper`](looper-cron-builder/SKILL.md) | 预算内反复尝试 | 共享 loop 与治理 |
+| [`optimization`](optimization-cron-builder/SKILL.md) | 更快、更小、更省、更简 | 冻结 oracle 下的串行测量比较，或设计研究 |
+| [`looper`](looper-cron-builder/SKILL.md) | 外挂 loop 粒度或共享治理 | 挂到 item、metric 或 surface 的可选层 |
 
 ## 结构
 
@@ -50,7 +50,7 @@ attempt ─ receipt ─ ADVANCED | STALLED | REGRESSED
    └─ ratchet：oracle 测得更优方留，否则回退
 ```
 
-形状：`single`；`relay`（模型族交替，新 session，仓库即记忆）；`review`（每轮新的只读非作者评审）；`lanes`（并行，由 compete 选）。`B3_LOOP=full|single|null` 供消融。
+形状：`single`；`relay`（模型族交替，新 session，仓库即记忆）；`review`（每轮新的只读非作者评审）；`lanes`（并行，由 compete 选）。`B3_LOOP=full|single|null` 供消融。looper skill 是可选的外挂层，用于定义 loop 粒度和治理。
 
 ## 外部知识
 
@@ -81,8 +81,10 @@ scripts/install_skills.sh --target all --scope user --link
 Use execution-cron-builder for this repository and this blueprint.
 Use compete-cron-builder to pick the root cause; the oracle is `make test`.
 Use learn-cron-builder to build a canon from these specs for BLUEPRINT.md.
-Use optimization-cron-builder in measured mode on this kernel.
-Use looper-cron-builder to govern these loops within a weekly budget.
+Use optimization-cron-builder in measured mode on this kernel. Compare candidates
+serially and re-run the oracle after each candidate.
+Use looper-cron-builder only when an external loop must set granularity or share
+a weekly budget.
 ```
 
 ```bash

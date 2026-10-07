@@ -63,6 +63,6 @@ bootstrap [ ] → claim → submit [_] → master 复跑 → accept [x] → clea
 |---|---|
 | execution | 需求与 checklist 同在一份 Markdown |
 | learn | 由锁定的 `source_manifest.tsv` 派生 `learn_checklist.md` |
-| optimization | `Stage_*_AR_Blueprint.md`（design）；oracle 合同与假设账本（measured） |
+| optimization | `Stage_*_AR_Blueprint.md`（design）；oracle 合同与假设账本（measured，通常串行） |
 | compete | 已定的题型、m、k、oracle |
-| looper | 挂在条目、指标或面上的 loop spec |
+| looper | 可选的外挂 loop spec，挂在条目、指标或面上 |

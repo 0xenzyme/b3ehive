@@ -50,7 +50,7 @@ bin/b3ehive doctor --repo .
 | 执行长期实现 | `execution-cron-builder` |
 | 理解、转换或翻译 source scope | `learn-cron-builder` |
 | 改进可测量结果或设计 | `optimization-cron-builder` |
-| 治理重复尝试和预算 | `looper-cron-builder` |
+| 定义外挂 loop 粒度或共享治理 | `looper-cron-builder` |
 
 ## 第一次调用
 

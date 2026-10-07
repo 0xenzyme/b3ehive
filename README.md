@@ -21,11 +21,11 @@ loop, and accept nothing they have not re-run.
 
 | Skill | When | Arrangement |
 |---|---|---|
-| [`compete`](compete-cron-builder/SKILL.md) | a hard choice, a root cause, an audit | parallel candidates; oracle first, then blind review, then votes without self-votes; or a deduplicated union of findings |
+| [`compete`](compete-cron-builder/SKILL.md) | one-round proposal comparison, a root cause, an audit | one bounded parallel comparison; oracle first, then blind review, then votes without self-votes; or a deduplicated union of findings |
 | [`execution`](execution-cron-builder/SKILL.md) | a long implementation | one blueprint as a DAG; isolated workers; the master accepts |
 | [`learn`](learn-cron-builder/SKILL.md) | unknown code, migration, translation, outside knowledge | a locked manifest mapped one to one, or a pinned canon |
-| [`optimization`](optimization-cron-builder/SKILL.md) | faster, smaller, cheaper, cleaner | measured loops under a frozen oracle, or design research |
-| [`looper`](looper-cron-builder/SKILL.md) | repeated attempts under a budget | the shared loop and its governance |
+| [`optimization`](optimization-cron-builder/SKILL.md) | faster, smaller, cheaper, cleaner | serial measured comparison under a frozen oracle, or design research |
+| [`looper`](looper-cron-builder/SKILL.md) | external loop granularity or shared governance | an optional layer attached to an item, metric, or surface |
 
 ## How It Holds Together
 
@@ -67,7 +67,8 @@ attempt ─ receipt ─ ADVANCED | STALLED | REGRESSED
 Shapes: `single`, `relay` (model families alternate, fresh sessions, the
 repository is the memory), `review` (a fresh, read-only, non-author reviewer each
 round), `lanes` (parallel attempts, compete selects). `B3_LOOP=full|single|null`
-swaps the loop for ablation.
+swaps the loop for ablation. The looper skill is an optional external layer
+that sets loop granularity and governance.
 
 ## Outside Knowledge
 
@@ -120,8 +121,10 @@ Codex plugin: `codex plugin marketplace add weiyangzen/b3ehive` then
 Use execution-cron-builder for this repository and this blueprint.
 Use compete-cron-builder to pick the root cause; the oracle is `make test`.
 Use learn-cron-builder to build a canon from these specs for BLUEPRINT.md.
-Use optimization-cron-builder in measured mode on this kernel.
-Use looper-cron-builder to govern these loops within a weekly budget.
+Use optimization-cron-builder in measured mode on this kernel. Compare
+candidates serially and re-run the oracle after each candidate.
+Use looper-cron-builder only when an external loop must set granularity or share
+a weekly budget.
 ```
 
 A competition from the shell:

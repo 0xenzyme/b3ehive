@@ -67,6 +67,6 @@ bootstrap [ ] → claim → submit [_] → master re-run → accept [x] → clea
 |---|---|
 | execution | requirements plus checklist in one Markdown file |
 | learn | `learn_checklist.md` derived from a locked `source_manifest.tsv` |
-| optimization | `Stage_*_AR_Blueprint.md` (design) or an oracle contract plus hypothesis ledger (measured) |
+| optimization | `Stage_*_AR_Blueprint.md` (design) or an oracle contract plus hypothesis ledger (measured, normally serial) |
 | compete | a decided question type, m, k, and oracle |
-| looper | loop specs attached to items, metrics, or surfaces |
+| looper | optional external loop specs attached to items, metrics, or surfaces |

@@ -30,8 +30,9 @@ optimization.
 | Acceptance | Self-test and repository gates | Item oracle, receipt, master integration, and re-run |
 | Worker authority | Work and acceptance could be mixed | Worker submits; master accepts |
 | External knowledge | No shared canon contract | Pinned canon with version, hash, level, license, and governed decisions |
-| Optimization | Research-oriented workflow | Measured mode with baseline, fresh inputs, and hypothesis ledger; design mode remains available |
-| Competition | Older layouts and selection rules | Oracle-first selection, blind review, and votes without self-votes |
+| Optimization | Research-oriented workflow | Serial measured comparison with a baseline, fresh inputs, and a hypothesis ledger; design mode remains available |
+| Competition | Older layouts and selection rules | One bounded parallel comparison round with oracle-first selection, blind review, and votes without self-votes |
+| Loop granularity | Often implicit in the selected work | An optional external looper layer can attach a loop to an item, metric, or surface |
 | Validation | Vocabulary presence checks | Structure, lexicon, unit, and behavior checks |
 
 The exact historical measurements are recorded in the root README. Treat them
@@ -49,6 +50,21 @@ The same file is copied into every skill under `references/core.md`.
 [`looper-cron-builder/loop.md`](../looper-cron-builder/loop.md) defines attempt
 shapes, stop rules, the ratchet, and the ablation switch. The other skills bind
 this loop by name.
+
+The smallest work unit is normally internal to the selected skill. The
+`looper-cron-builder` skill is an optional external layer. Use it when a loop
+must be defined at another granularity or must share an explicit resource and
+side-effect envelope.
+
+### Comparison shape
+
+`compete` is for one bounded round of parallel candidates. It answers a frozen
+question and selects or unions the results.
+
+`optimization` normally compares one candidate after another. It measures,
+keeps or reverts, and uses the result to choose the next candidate. Parallel
+`lanes` are an exception for independent hypotheses that need one comparison
+round.
 
 ### Oracle
 

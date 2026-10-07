@@ -28,8 +28,9 @@ instruments。
 | 验收 | 自测和仓库 gate | item oracle、receipt、master 集成和复跑 |
 | worker 权限 | 实现和验收容易混在一起 | worker submit；master accept |
 | 外部知识 | 没有共享 canon 契约 | 记录 version、hash、level、license 和所辖 decision 的 pinned canon |
-| 优化 | 以研究流程为主 | measured mode 加入 baseline、fresh inputs 和 hypothesis ledger；保留 design mode |
-| 竞争 | 旧布局和旧选择规则 | oracle-first、blind review 和去除自投后的投票 |
+| 优化 | 以研究流程为主 | 围绕 baseline、fresh inputs 和 hypothesis ledger 的串行测量比较；保留 design mode |
+| 竞争 | 旧布局和旧选择规则 | 一轮有边界的并行比较，再进行 oracle-first、blind review 和去除自投后的投票 |
+| Loop 粒度 | 常隐含在选中的工作中 | 可选的外挂 looper 层可以把 loop 挂到 item、metric 或 surface |
 | 校验 | 词汇存在性检查 | structure、lexicon、unit 和 behavior 检查 |
 
 具体的历史测量值保留在根 README 中。它们是 v2 release snapshot，不是每个
@@ -47,6 +48,19 @@ instruments。
 [`looper-cron-builder/loop.md`](../looper-cron-builder/loop.md) 定义 attempt
 shape、stop rule、ratchet 和 ablation switch。其他 skill 按名称绑定这个
 loop。
+
+最小工作单元通常已经内化在选中的 skill 中。`looper-cron-builder` 是可选的
+外挂层。loop 需要定义在其他粒度上，或需要共享明确的资源和副作用边界时，才
+使用它。
+
+### 比较形态
+
+`compete` 用于一轮有边界的并行 candidate。它回答一个冻结问题，再选择结果
+或合并 findings。
+
+`optimization` 通常一次比较一个 candidate。它测量、保留或回退，再用结果选
+择下一个 candidate。只有独立 hypothesis 需要同一轮比较时，才使用并行
+`lanes`。
 
 ### Oracle
 
