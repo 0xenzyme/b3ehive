@@ -5,7 +5,7 @@ description: Improves a system against a declared objective. Design mode writes 
 
 # Optimization
 
-core v2 · loop v1; measured mode binds the frozen benchmark as the oracle and
+core v2 · loop v2; measured mode binds the frozen benchmark as the oracle and
 keeps the ratchet. Read `references/core.md` and `references/loop.md` first;
 this body adds only optimization rules.
 
@@ -28,12 +28,17 @@ Decide the mode. A request to make something faster, smaller, or cheaper takes
 2. Baseline. Measure the baseline under the contract; profile it with a bound
    instrument.
 3. Hypothesis. Each entry names its profile evidence, cited canon, expected
-   gain, and the change.
+   gain, the change, its lineage, and its direction (`grow`, `switch`,
+   `verify`) with mechanism distance from the incumbent.
 4. Candidates. Run the loop: `single` by default, `relay` for stubborn targets,
    `lanes` when hypotheses compete.
 5. Re-measure. The master re-runs `oracle.full` on fresh inputs and recomputes
-   aggregates from raw rows; agent-reported speedups count for nothing.
-6. Ratchet. Keep a change only when it is correct and better; otherwise revert.
+   aggregates from raw rows; agent-reported speedups count for nothing. Paired,
+   alternating, fresh-process trials decide; a gain counts only when its
+   interval excludes zero and clears the minimum effect (`B3_STATS`).
+6. Ratchet. Keep a change only when it is correct and better than the best
+   accepted state; otherwise revert. Untrusted measurements stay
+   `observed_only`.
 7. Record. Log every outcome, rejected ones included; a rejected hypothesis
    returns only with new evidence.
 
@@ -79,7 +84,7 @@ Product code stays downstream of design mode. Detail and repair:
 ## References
 
 - `references/core.md`, `references/loop.md`: shared laws and loop
-- `references/measured-mode.md`: oracle contract, ledgers, instruments
+- `references/measured-mode.md`: oracle contract, ledgers, statistics, identity, instruments
 - `references/design-mode.md`: AR blueprint, research docs, repair
 - `references/substrate-cron.md`: cron, runners, disk guards
 - `references/lessons.md`: where each v1 rule now lives

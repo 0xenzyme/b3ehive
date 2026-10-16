@@ -5,7 +5,7 @@ description: Runs bounded proposal competitions with n workers and m candidates,
 
 # Compete
 
-core v2 · loop v1, shape `lanes`. Read `references/core.md` and
+core v2 · loop v2, shape `lanes`. Read `references/core.md` and
 `references/loop.md` first; this body adds only competition rules.
 
 ## Decide
@@ -46,6 +46,25 @@ In this order:
 4. Stable candidate id.
 
 Coverage: dedupe by location and claim, keep the union, rank audits by severity.
+
+Oracle lines the script reads: `SCORE: <x>`; `REGRESSED: <target>` (a guard
+target that passed at baseline now fails, so the candidate fails);
+`OBSERVED_ONLY` (evidence below declared fidelity: kept, never ranked);
+`SUSPECT: <reason>` (integrity suspicion, recorded only).
+
+## Integrity
+
+- A suspicion never disqualifies alone. Confirm cheating only when two channels
+  agree (for example a trajectory scan and a runner attestation) and a non-author
+  reviewer finds the restricted material was both seen and used.
+- Solvers never see analyst outputs, holdout data, or scores of peers.
+
+## Shadow Mode
+
+To change a prompt, policy, or validator, run the incumbent and the proposal as
+two candidates on a frozen gold set. Recommend promotion only when the proposal
+meets the declared quality thresholds and its token and latency ratios stay
+within the declared caps. The master applies the change; compete never does.
 
 ## Script
 

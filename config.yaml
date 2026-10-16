@@ -69,7 +69,7 @@ b3ehive:
     selection_order: [oracle, blind_review, votes_without_self, stable_id]
     oracle_runs: 1
   loop:
-    version: v1
+    version: v2
     variant: full        # B3_LOOP=full|single|null
     governance: on       # B3_LOOPER_GOVERNANCE=on|off
   core:

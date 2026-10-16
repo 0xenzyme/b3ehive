@@ -58,10 +58,11 @@ looper *leases*, *pauses*, and *retires*. A lint rejects any other pairing.
 ## The Loop
 
 ```text
-attempt ─ receipt ─ ADVANCED | STALLED | REGRESSED
-   ▲                         │
-   │   two stalls: replan    │   three: pause
-   └─ ratchet: keep only what the oracle measures better; else revert
+attempt ─ receipt ─ validated_progress | repair_required | replan_required
+   ▲                │                    user_action_required | wait | failed
+   │   two stalls: replan obligation, cleared only by new evidence
+   │   three stalls: pause
+   └─ ratchet: keep only what beats the best accepted state; else revert
 ```
 
 Shapes: `single`, `relay` (model families alternate, fresh sessions, the
@@ -81,6 +82,14 @@ swaps the loop for ablation.
 b3ehive bundles no domain knowledge. Domain packs, such as a CUDA docs MCP
 server, a kernel wiki, or an Nsight Compute skill, enter through canon and
 instruments.
+
+## RSI Example
+
+[`examples/rsi-prompt.md`](examples/rsi-prompt.md) is a recursive
+self-improvement example prompt. One loop improves a target under a frozen
+oracle; a second loop improves the instruments doing the work (skills,
+validators, scripts) through shadow-mode competition on the frozen eval set. The
+master accepts every change, and every instrument change is revertible.
 
 ## Install
 
@@ -134,7 +143,7 @@ scripts/check_all.sh        # sync, lint, unit tests, layout and platform checks
 bin/b3ehive doctor --repo .  # stale installs and controllers
 ```
 
-`evals/scenarios.json` holds sixteen behavior scenarios, at least three per skill, and the
+`evals/scenarios.json` holds twenty behavior scenarios, at least three per skill, and the
 ablation matrix that decides which mechanisms stay.
 
 ## v2 At A Glance
@@ -157,6 +166,7 @@ Rules moved out of skill bodies live in each skill's `references/lessons.md`.
 - `core/`: shared law and substrate guide (sources of the copies)
 - `*-cron-builder/`: the five skills
 - `evals/`: behavior scenarios and ablation matrix
+- `examples/`: the RSI example prompt
 - `templates/`: blueprint, oracle, canon, instruments
 - `tests/`: unit tests for the compete script and the lint
 - `scripts/`: install, sync, lint, checks

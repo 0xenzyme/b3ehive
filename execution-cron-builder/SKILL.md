@@ -5,7 +5,7 @@ description: Executes one authoritative blueprint as a DAG with isolated workers
 
 # Execution
 
-core v2 · loop v1, default shape `single`. Read `references/core.md` and
+core v2 · loop v2, default shape `single`. Read `references/core.md` and
 `references/loop.md` first; this body adds only execution rules.
 
 ## Acceptance
@@ -78,7 +78,10 @@ One file holds requirements and the checklist:
 - Materialize declared writable paths and justified read-only files. A full
   repository copy per claim needs a `DECIDE` line showing the oracle needs it.
 - Workers submit repository-relative patches with checksums and a receipt; the
-  canonical checkout stays outside their reach.
+  canonical checkout stays outside their reach. The receipt fingerprint covers
+  committed, staged, unstaged, and untracked content, so a review binds to the
+  exact final state.
+- Re-check the pinned source revision at every admission, not only at start.
 - Harvest valid submissions into immutable queue storage before pruning any
   stale claim.
 - Check ownership, inode independence, card digest, and changed paths at launch
@@ -90,6 +93,17 @@ One file holds requirements and the checklist:
   attempts stall or whose oracle is weak.
 - Repair is a new generation in a fresh run root; it never overlaps the
   generation it replaces.
+
+## Effects And Retries
+
+- Decide with a generated rule table that takes no effects; one entry point
+  executes. Route on the loop's result field.
+- Record intent before each side effect. After a crash, redo an effect only when
+  a readback proves it absent; a readback that cannot decide blocks.
+- Retry by failure kind from one table: transient faults retry with capped
+  backoff; budget exhaustion, schema rejection, and policy refusal never retry.
+- Keep a worker's session across transient faults; discard it on schema
+  rejection or lost history.
 
 ## Workers And Transport
 

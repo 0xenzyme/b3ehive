@@ -12,3 +12,7 @@
 
 New in v2: measured mode, oracle contract, hypothesis ledger, instruments.
 Origin: a90ad1a (disk guards), d04c918 (output discipline).
+
+## 2.2.0
+
+`B3_STATS` statistics rule, toolchain-closure identity, direction and lineage columns.

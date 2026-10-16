@@ -23,3 +23,7 @@ where each v1 section lives and the commit that introduced it.
 New in v2: item grammar (`oracle`, `tier`, `budget`, `canon`, `other#ID`),
 receipts, fresh re-runs, the checkbox and oracle guards, family rotation on
 rejection, substrate choice, and controller version stamps.
+
+## 2.2.0
+
+Effects and retries: intent and readback, retry table by failure kind, revision fence at every admission, receipt fingerprint over untracked content, typed item closure.

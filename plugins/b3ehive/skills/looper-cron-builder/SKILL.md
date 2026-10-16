@@ -5,7 +5,7 @@ description: Defines the shared attempt loop and governs long-running or concurr
 
 # Looper
 
-core v2 · owner of loop v1. Read `references/core.md`, then `loop.md`.
+core v2 · owner of loop v2. Read `references/core.md`, then `loop.md`.
 
 Looper has two jobs. It owns `loop.md`, the one definition of an attempt loop
 that the other four skills bind by name. It governs runs where loops live long
@@ -18,9 +18,9 @@ skill only for governance.
 |---|---|
 | Loop | target (item, metric, or surface), oracle, budget envelope, attachment point |
 | Lease | budget slice for one attempt: tokens, time, money, disk, diff size, TTL, heartbeat, owner, workspace |
-| Attempt | hypothesis, shape, receipt, `ADVANCED` / `STALLED` / `REGRESSED` |
+| Attempt | hypothesis, direction, shape, receipt, result (loop v2 vocabulary) |
 | Evidence row | changed paths, commands, results, side-effect decisions, nested-run refs, reward class |
-| Decision | `continue`, `pause`, `split`, `lower`, `raise`, `escalate`, or `retire` |
+| Decision | `continue`, `replan`, `pause`, `split`, `lower`, `raise`, `escalate`, or `retire` |
 | Friction note | instrument, effect (`helped`, `blocked`, `wasted`, `under-validated`), evidence, suggestion |
 
 Field schemas, bridge levels, signal types, and the full ledger set live in
@@ -44,6 +44,13 @@ Field schemas, bridge levels, signal types, and the full ledger set live in
 - Nested skill runs spend the parent lease and submit candidates; the parent
   classifies reward.
 - Same loop, same strategy, and no reward never runs again.
+- A stalling loop gets a `replan` decision before any pause; pause follows only
+  when the replan obligation is still open at the third stall.
+- Novelty is secondary reward: an attempt that adds evidence ids or observation
+  keys absent from the loop's history lowers the no-reward counter; a replayed
+  or renamed claim does not.
+- An attempt that produces no state transition closes without spending its
+  lease; record the no-spend closeout.
 
 ## Workflow
 

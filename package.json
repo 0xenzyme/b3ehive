@@ -2,7 +2,7 @@
   "name": "b3ehive",
   "slug": "b3ehive",
   "displayName": "b3ehive - Five Swarm Skills",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Five portable agent swarm skills for Codex, Claude Code, Cursor, Grok Build, opencode, OpenClaw, and Hermes: compete, execution, learn, optimization, and looper, bound by one seven-law core and one shared loop.",
   "author": "weiyangzen",
   "license": "MIT",
@@ -40,7 +40,9 @@
     "resource-aware",
     "oracle",
     "canon",
-    "measured-optimization"
+    "measured-optimization",
+    "rsi",
+    "self-improvement"
   ],
   "engines": {
     "openclaw": ">=2026.2.0"
@@ -70,7 +72,8 @@
     "tests/",
     "VERSION",
     "config.yaml",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "examples/"
   ],
   "openclaw": {
     "entry": "SKILL.md",

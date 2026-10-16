@@ -78,6 +78,31 @@ class CompeteTests(unittest.TestCase):
                              "--oracle-command", oracle, "--oracle-runs", "3"), 0)
         self.assertEqual(load(self.tmp, "selected.json")["selected_ids"], ["proposal_002"])
 
+    def test_guard_regression_fails_candidate(self):
+        oracle = ('echo "SCORE: 9"; [ "{candidate_id}" = proposal_001 ] && echo "REGRESSED: test_auth"; '
+                  '[ "{candidate_id}" = proposal_002 ] && echo "SCORE: 2"; true')
+        self.assertEqual(run(self.tmp, "--question-type", "repair", "--command", ECHO,
+                             "--oracle-command", oracle), 0)
+        self.assertNotEqual(load(self.tmp, "selected.json")["selected_ids"], ["proposal_001"])
+        evidence = load(self.tmp, "selection_evidence.json")
+        self.assertEqual(evidence["oracle"]["proposal_001"]["regressed"], ["test_auth"])
+
+    def test_observed_only_is_kept_but_not_ranked(self):
+        oracle = ('if [ "{candidate_id}" = proposal_003 ]; then echo "SCORE: 99"; echo OBSERVED_ONLY; '
+                  'else echo "SCORE: 1"; fi')
+        self.assertEqual(run(self.tmp, "--question-type", "precision", "--command", ECHO,
+                             "--oracle-command", oracle), 0)
+        self.assertNotIn("proposal_003", load(self.tmp, "selected.json")["selected_ids"])
+        self.assertEqual(load(self.tmp, "compete_manifest.json")["observed_only"], ["proposal_003"])
+
+    def test_suspicion_is_recorded_not_disqualifying(self):
+        oracle = 'echo "SCORE: 5"; [ "{candidate_id}" = proposal_001 ] && echo "SUSPECT: reads holdout path"; true'
+        self.assertEqual(run(self.tmp, "--question-type", "precision", "--command", ECHO,
+                             "--oracle-command", oracle), 0)
+        self.assertEqual(load(self.tmp, "selected.json")["selected_ids"], ["proposal_001"])
+        self.assertEqual(load(self.tmp, "compete_manifest.json")["suspected"],
+                         {"proposal_001": ["reads holdout path"]})
+
     def test_no_candidate_passing_the_oracle_fails(self):
         self.assertEqual(run(self.tmp, "--question-type", "precision", "--command", ECHO,
                              "--oracle-command", "exit 1"), 3)

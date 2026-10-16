@@ -44,10 +44,11 @@ SKILL.md ── 判断：何时用、如何拆、用何 oracle、取何形状、
 ## 循环
 
 ```text
-attempt ─ receipt ─ ADVANCED | STALLED | REGRESSED
-   ▲                         │
-   │   二滞：重规划          │   三滞：暂停
-   └─ ratchet：oracle 测得更优方留，否则回退
+attempt ─ receipt ─ validated_progress | repair_required | replan_required
+   ▲                │                    user_action_required | wait | failed
+   │   二滞：开重规划义务，唯新证据可清
+   │   三滞：暂停
+   └─ ratchet：胜过已收最佳者方留，否则回退
 ```
 
 形状：`single`；`relay`（模型族交替，新 session，仓库即记忆）；`review`（每轮新的只读非作者评审）；`lanes`（并行，由 compete 选）。`B3_LOOP=full|single|null` 供消融。
@@ -58,6 +59,10 @@ attempt ─ receipt ─ ADVANCED | STALLED | REGRESSED
 - **仪器。** profiler 与 analyzer 先探测后用，记入 `instruments.tsv`，附诊断手册。
 
 b3ehive 不内置领域知识。CUDA 文档 MCP、kernel wiki、Nsight Compute skill 一类领域包，经 canon 与仪器接入。
+
+## RSI 样例
+
+[`examples/rsi-prompt.zh-CN.md`](examples/rsi-prompt.zh-CN.md) 是一份递归自我改进（RSI）样例提示词：一个循环在冻结 oracle 下改进目标；另一个循环经由冻结评测集上的影子竞争，改进做事的仪器本身（skill、校验器、脚本）。每个改动都由 master 接受，仪器改动都可回滚。
 
 ## 安装
 
@@ -93,7 +98,7 @@ scripts/check_all.sh         # 同步、lint、单测、布局与平台校验
 bin/b3ehive doctor --repo .  # 过期安装与控制器
 ```
 
-`evals/scenarios.json`：十六个行为场景（每 skill 至少三个）与消融矩阵。
+`evals/scenarios.json`：二十个行为场景（每 skill 至少三个）与消融矩阵。
 
 ## v2 一览
 

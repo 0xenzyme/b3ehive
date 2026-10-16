@@ -5,7 +5,7 @@ description: Turns a frozen source scope into validated artifacts such as one-to
 
 # Learn
 
-core v2 · loop v1; an item's oracle is traceability to its source row, plus the
+core v2 · loop v2; an item's oracle is traceability to its source row, plus the
 depth check. Read `references/core.md` and `references/loop.md` first; this body
 adds only learning rules. Working frame: understand it until you can make it.
 
@@ -77,8 +77,13 @@ official specs, datasheets, source code, and curated wikis.
 - Audit on a schedule for drift, upstream corrections, and wrong content.
 - Other skills cite entries when a decision needs one; the canon never fills
   every prompt, and ablation measures its value.
+- Experience lives in `canon/lessons.tsv` as `lesson` and `incident` rows.
+  Validated attempts add rows; agents search before acting
+  (`scripts/find_lesson.py search`), at most 20 summaries per query. A row is
+  active only when a use-site query recalls it; `applied` and `helpful` are
+  recorded apart.
 
-Schema and audit: `references/canon.md`.
+Schema, experience rules, and audit: `references/canon.md`.
 
 ## Route
 

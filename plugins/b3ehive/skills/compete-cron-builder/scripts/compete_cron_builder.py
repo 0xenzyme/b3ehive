@@ -26,6 +26,9 @@ FINDING_RE = re.compile(r"^\s*FINDING:\s*(.+)$", re.M)
 VOTE_RE = re.compile(r"^\s*selected_candidate_id\s*:\s*([A-Za-z0-9_-]+)\s*$", re.M | re.I)
 REVIEW_RE = re.compile(r"^\s*selected\s*:\s*([A-Z])\s*$", re.M)
 SCORE_RE = re.compile(r"^\s*SCORE:\s*(-?[0-9]+(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?)\s*$", re.M)
+REGRESSED_RE = re.compile(r"^\s*REGRESSED:\s*(.+)$", re.M)
+SUSPECT_RE = re.compile(r"^\s*SUSPECT:\s*(.+)$", re.M)
+OBSERVED_RE = re.compile(r"^\s*OBSERVED_ONLY\b", re.M)
 
 
 def read_text(path):
@@ -232,8 +235,14 @@ def live(plan):
 # ---------------------------------------------------------------- selection
 
 def measure(args, plan, cand):
-    """Run the oracle `--oracle-runs` times; every run must pass. Score is the worst run."""
+    """Run the oracle `--oracle-runs` times; every run must pass. Score is the worst run.
+
+    `REGRESSED: <target>` lines mark a guard-set regression and fail the candidate.
+    `OBSERVED_ONLY` marks evidence below declared fidelity: kept, never ranked.
+    `SUSPECT: <reason>` records an integrity suspicion without disqualifying.
+    """
     scores, passed, runs = [], True, []
+    regressed, suspected, observed_only = [], [], False
     for run_index in range(args.oracle_runs):
         values = {"candidate_id": cand["id"], "candidate_dir": str(cand["paths"]["dir"]),
                   "result_file": str(cand["paths"]["revision_round_1"] if read_text(cand["paths"]["revision_round_1"])
@@ -245,13 +254,18 @@ def measure(args, plan, cand):
         found = SCORE_RE.findall(out)
         runs.append({"run": run_index, "exit_code": code, "score": float(found[-1]) if found else None,
                      "stdout_sha256": sha256(out), "argv": cmd})
+        regressed += REGRESSED_RE.findall(out)
+        suspected += SUSPECT_RE.findall(out)
+        observed_only = observed_only or bool(OBSERVED_RE.search(out))
         passed = passed and code == 0
         if found:
             scores.append(float(found[-1]))
+    passed = passed and not regressed
     worst = None
     if scores:
         worst = min(scores) if args.oracle_direction == "max" else max(scores)
-    return {"passed": passed, "score": worst, "runs": runs}
+    return {"passed": passed, "score": worst, "runs": runs, "regressed": sorted(set(regressed)),
+            "suspected": sorted(set(suspected)), "observed_only": observed_only}
 
 
 def blind_review(args, plan, cands):
@@ -288,7 +302,8 @@ def tally_votes(plan):
 
 def rank(args, plan, cands):
     oracle = {c["id"]: measure(args, plan, c) for c in cands} if args.oracle_command else {}
-    eligible = [c for c in cands if not oracle or oracle[c["id"]]["passed"]]
+    eligible = [c for c in cands if not oracle or (oracle[c["id"]]["passed"] and not oracle[c["id"]]["observed_only"])]
+    observed = [c["id"] for c in cands if oracle and oracle[c["id"]]["observed_only"]]
     review_pick = blind_review(args, plan, eligible) if args.review_command and len(eligible) > 1 else None
     votes, void = tally_votes(plan)
 
@@ -302,7 +317,10 @@ def rank(args, plan, cands):
 
     ordered = sorted(eligible, key=key)
     return ordered[: plan["choose_count"]], {"oracle": oracle, "review_pick": review_pick,
-                                             "votes": votes, "void_votes": void}
+                                             "votes": votes, "void_votes": void,
+                                             "observed_only": observed,
+                                             "suspected": {c["id"]: oracle[c["id"]]["suspected"]
+                                                           for c in cands if oracle and oracle[c["id"]]["suspected"]}}
 
 
 def norm(text):
@@ -414,7 +432,8 @@ def orchestrate(args):
         selected_ids = [c["id"] for c in chosen]
         write_json(out / "selection_evidence.json", evidence)
         extra = {"review_pick": evidence["review_pick"], "votes": evidence["votes"],
-                 "void_votes": evidence["void_votes"]}
+                 "void_votes": evidence["void_votes"], "observed_only": evidence["observed_only"],
+                 "suspected": evidence["suspected"]}
         if not selected_ids:
             write_text(out / "summary.md", "# Compete Failed\n\nNo candidate passed the oracle.")
             write_manifest(args, plan, [], extra)

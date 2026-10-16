@@ -21,7 +21,7 @@ SKILLS = ["compete-cron-builder", "execution-cron-builder", "learn-cron-builder"
 MAX_LINES = 300
 MAX_TOKENS = 3500          # chars / 4; Claude Code re-attaches only 5,000 tokens per skill after compaction
 MAX_DESCRIPTION = 400
-CORE_VERSION, LOOP_VERSION = "core v2", "loop v1"
+CORE_VERSION, LOOP_VERSION = "core v2", "loop v2"
 
 # Verbs bound to fixed subjects by the core lexicon.
 FORBIDDEN = [

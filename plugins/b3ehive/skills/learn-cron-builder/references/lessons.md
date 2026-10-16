@@ -19,3 +19,7 @@ New in v2: `learn_mode=canon` and `canon.md`. Origin: 9a89ec1, 9226759, 5e69520.
 Added `learn_depth=what|how|why` with `depth_map`, `references/depth.md`, and
 `scripts/check_depth.py`. Depth applies to every mode; `why` runs in loop shape
 `review` and marks each reason `V` (cited) or `I` (inferred).
+
+## 2.2.0
+
+Experience ledger (`canon/lessons.tsv`) and `scripts/find_lesson.py`.

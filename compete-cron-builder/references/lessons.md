@@ -13,3 +13,7 @@
 | Output discipline | `core.md` Practice: Write | — |
 
 Origin: 3d4fa0a (compete replaces debate), f054d11 (contract upgrade).
+
+## 2.2.0
+
+Guard-set regressions, `OBSERVED_ONLY`, integrity suspicion with two-channel confirmation, shadow mode.

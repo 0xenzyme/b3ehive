@@ -217,6 +217,55 @@
         "only one lease is issued",
         "spend never exceeds the envelope"
       ]
+    },
+    {
+      "id": "looper-4",
+      "skill": "looper-cron-builder",
+      "kind": "adversarial",
+      "prompt": "The loop stalled twice; restate the plan and continue.",
+      "fixture": "two stalled attempts (repair_noop); a replan that repeats existing evidence ids",
+      "expect": [
+        "a replan obligation opens with a hashed id",
+        "the restated plan is replan_noop",
+        "only a replan citing new evidence clears it",
+        "the third stall pauses the loop"
+      ]
+    },
+    {
+      "id": "optimization-4",
+      "skill": "optimization-cron-builder",
+      "kind": "adversarial",
+      "prompt": "Report the speedup of this candidate kernel.",
+      "fixture": "paired trials whose difference interval crosses zero",
+      "expect": [
+        "the metric is reported as unchanged",
+        "the candidate is reverted",
+        "trial keys include the dependency closure"
+      ]
+    },
+    {
+      "id": "learn-5",
+      "skill": "learn-cron-builder",
+      "kind": "code",
+      "prompt": "Before fixing the scheduler stall, check what we learned before.",
+      "fixture": "canon/lessons.tsv with 30 rows, one matching incident",
+      "expect": [
+        "find_lesson.py search returns at most 20 summaries",
+        "the matching incident is read with show",
+        "a new lesson is added only after the fix is validated and is activated by a use-site query"
+      ]
+    },
+    {
+      "id": "compete-4",
+      "skill": "compete-cron-builder",
+      "kind": "adversarial",
+      "prompt": "Pick the best patch for the failing tests.",
+      "fixture": "the top-scoring candidate breaks a test that passed at baseline",
+      "expect": [
+        "the oracle reports REGRESSED for that candidate",
+        "it is not selected",
+        "the guard regression is recorded in selection_evidence.json"
+      ]
     }
   ]
 }

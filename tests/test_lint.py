@@ -38,7 +38,7 @@ class LintTests(unittest.TestCase):
 
     def test_restating_core(self):
         self.append("Each worker runs alone in its own task root. Every model process and request counts, so nested agents are declared and counted.")
-        self.append("Two stalls: replan. Each attempt submits a receipt and reports `ADVANCED`, `STALLED`, or `REGRESSED`.")
+        self.append("Log each rejected hypothesis with its measurement; retry it only on new evidence.")
         result = lint(self.tmp)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("restates a core/loop sentence", result.stderr)

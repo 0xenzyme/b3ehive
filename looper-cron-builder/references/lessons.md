@@ -119,3 +119,7 @@ Use generic labels such as `product_beta`, `repo_maintenance`,
 `benchmark_lane`, `claim_audit`, `customer_workflow`, `growth_experiment`, and
 `ops_review`. Private names required for local execution stay in `.cron/`,
 `.ops/`, `.b3ehive/looper/*.local.*`, or another ignored surface.
+
+## 2.2.0
+
+`replan` before pause, novelty as secondary reward, no-spend closeouts; loop v2 owned here.

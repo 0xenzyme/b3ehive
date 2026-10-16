@@ -197,3 +197,14 @@ Static validation scans executable launch/config surfaces for forbidden Codex
 subcommands and scans generated artifacts for unexplained absolute paths or
 known foreign project tokens. Negative prose documenting forbidden transports
 is allowed; executable command-shaped occurrences are not.
+
+## Generated Validation (v2.2 additions)
+
+- the rule table returns a decision without writing state or spending budget
+- a crash between intent and effect replays the effect only when readback proves
+  it absent; an undecidable readback blocks the claim
+- each failure kind follows its retry row; budget exhaustion never retries
+- a moved source revision blocks admission of new claims
+- a receipt fingerprint changes when an untracked file changes
+- an item without successor, `wait` with `resume_when`, or `no_followup` is
+  reopened by the master
