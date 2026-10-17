@@ -1,13 +1,22 @@
 ---
 name: optimization-cron-builder
-description: Improves a system against a declared objective. Design mode writes one research doc per refinement item; measured mode runs baseline, profile, hypothesis, candidate, and re-measure loops under a frozen oracle. Use for performance work such as CUDA kernels, or for design refinement. 性能优化、架构优化。
+description: Improves a system against a declared objective. Design mode writes one research doc per refinement item; measured mode compares candidates serially under a frozen oracle. Use for performance work such as CUDA kernels, or for design refinement. 性能优化、串行比较、架构优化。
 ---
 
 # Optimization
 
+For a user-facing choice guide, read `docs/skill-selection.md`. Use measured
+mode when an oracle can measure a target; use design mode for research against a
+design philosophy.
+
 core v2 · loop v2; measured mode binds the frozen benchmark as the oracle and
 keeps the ratchet. Read `references/core.md` and `references/loop.md` first;
 this body adds only optimization rules.
+
+Measured optimization normally compares candidates in series. It measures one
+candidate, keeps or reverts it, and uses the result to choose the next
+candidate. Use parallel `lanes` only when independent hypotheses need one
+comparison round.
 
 ## Modes
 
@@ -31,7 +40,8 @@ Decide the mode. A request to make something faster, smaller, or cheaper takes
    gain, the change, its lineage, and its direction (`grow`, `switch`,
    `verify`) with mechanism distance from the incumbent.
 4. Candidates. Run the loop: `single` by default, `relay` for stubborn targets,
-   `lanes` when hypotheses compete.
+   and serial comparison for the normal ratchet. Use `lanes` when independent
+   hypotheses need one parallel comparison round.
 5. Re-measure. The master re-runs `oracle.full` on fresh inputs and recomputes
    aggregates from raw rows; agent-reported speedups count for nothing. Paired,
    alternating, fresh-process trials decide; a gain counts only when its
