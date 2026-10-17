@@ -41,7 +41,7 @@ artifacts ── mechanics: gates, harnesses, receipts, hooks, cron and flow con
 Prompts carry judgment. Generated artifacts carry mechanics. A rule that must
 never break becomes a generated check, not a repeated sentence.
 
-![Hive: core and loop are copied into every skill](docs/diagrams/hive.gif)
+![Hive: core and loop are copied into every skill](docs/diagrams/hive.en.gif)
 
 `core` and `loop` are written once and copied into every skill. Mechanics land
 in generated artifacts. The highlight order is illustrative.
@@ -60,7 +60,7 @@ Verbs carry authority. Workers *claim* and *submit*; oracles *measure*;
 non-author reviewers *judge*; the master *accepts*, *rejects*, and *reverts*;
 looper *leases*, *pauses*, and *retires*. A lint rejects any other pairing.
 
-![Acceptance: reject returns the item; the side rail is authority](docs/diagrams/accept.gif)
+![Acceptance: reject returns the item; the side rail is authority](docs/diagrams/accept.en.gif)
 
 `reject` returns the item from the master to `[ ]`. The side rail is authority,
 not an alarm.
@@ -81,7 +81,7 @@ round), `lanes` (parallel attempts, compete selects). `B3_LOOP=full|single|null`
 swaps the loop for ablation. The looper skill is an optional external layer
 that sets loop granularity and governance.
 
-![Loop: validated progress reaches the ratchet; repair tries again](docs/diagrams/loop.gif)
+![Loop: validated progress reaches the ratchet; repair tries again](docs/diagrams/loop.en.gif)
 
 Validated progress reaches the ratchet; repair tries again. Two stalls open a
 replan; three stalls pause. Rounds are illustrative.
@@ -161,7 +161,7 @@ bin/b3ehive compete --question-type precision \
 
 The runner comes from `B3EHIVE_AGENT_RUNNER`; `--mock` runs a dry competition.
 
-![Use: pick an arrangement; the log shows the invocation](docs/diagrams/use.gif)
+![Use: pick an arrangement; the log shows the invocation](docs/diagrams/use.en.gif)
 
 When a skill lights, the log shows the invocation from this page. The order is
 illustrative.
