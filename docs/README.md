@@ -10,6 +10,9 @@ Public documentation uses paired Markdown files:
 - Keep technical names in English: `blueprint`, `DAG`, `skill`, `worker`,
   `master lane`, `validation gate`, `LooperLog`, and command names.
 
+Animated explainers live in [`diagrams/`](diagrams/). The home page and the
+blueprint lifecycle embed them. Highlight order is illustrative, not a real run.
+
 ## Documents
 
 | English | 中文 |

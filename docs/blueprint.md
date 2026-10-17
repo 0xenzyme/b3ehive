@@ -56,6 +56,11 @@ bootstrap [ ] → claim → submit [_] → master re-run → accept [x] → clea
                                └→ reject [ ] with notes → next generation
 ```
 
+![Acceptance lifecycle](diagrams/accept.gif)
+
+`reject` returns the item from the master to `[ ]`. The side rail is authority,
+not an alarm. The highlight order is illustrative.
+
 ## By Skill
 
 | Skill | Blueprint |

@@ -10,6 +10,8 @@
 - 技术名词保留英文原文，例如 `blueprint`、`DAG`、`skill`、`worker`、
   `master lane`、`validation gate`、`LooperLog` 和命令名。
 
+说明图在 [`diagrams/`](diagrams/)，已嵌入首页和蓝图的生命周期。亮起顺序是示意，不是一次真实运行。
+
 ## 文档列表
 
 | English | 中文 |
