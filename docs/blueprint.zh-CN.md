@@ -53,6 +53,10 @@ bootstrap [ ] → claim → submit [_] → master 复跑 → accept [x] → clea
                                └→ reject [ ] 附 notes → 下一代
 ```
 
+![生命周期：reject 退回未做](diagrams/accept.gif)
+
+`reject` 把条目从 master 退回 `[ ]`。侧栏是授权，不是告警。亮起顺序是示意。
+
 ## 各 skill 的 blueprint
 
 | Skill | 形态 |

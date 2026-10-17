@@ -29,6 +29,10 @@ SKILL.md ── 判断：何时用、如何拆、用何 oracle、取何形状、
 
 提示词载判断，产物载机制。不可违之规，化为生成的检查，不复述。
 
+![结构：core 与 loop 同步进五个 skill](docs/diagrams/hive.gif)
+
+core 与 loop 只写一次，同步进五个 skill；机制落到生成物。亮起顺序是示意。
+
 ## 七律
 
 1. **一源。** 一份 blueprint。`[ ]` 未做，`[_]` 已交，`[x]` 已收。
@@ -41,6 +45,10 @@ SKILL.md ── 判断：何时用、如何拆、用何 oracle、取何形状、
 
 动词即授权：worker *claim*、*submit*；oracle *measure*；非作者评审 *judge*；master *accept*、*reject*、*revert*；looper *lease*、*pause*、*retire*。他种搭配，lint 拒之。
 
+![验收：reject 退回未做，侧栏是授权](docs/diagrams/accept.gif)
+
+`reject` 把条目从 master 退回 `[ ]`。侧栏是授权，不是告警。
+
 ## 循环
 
 ```text
@@ -52,6 +60,10 @@ attempt ─ receipt ─ validated_progress | repair_required | replan_required
 ```
 
 形状：`single`；`relay`（模型族交替，新 session，仓库即记忆）；`review`（每轮新的只读非作者评审）；`lanes`（并行，由 compete 选）。`B3_LOOP=full|single|null` 供消融。
+
+![尝试环：前进进棘轮，退回再试](docs/diagrams/loop.gif)
+
+前进交给棘轮，退回再试。两滞才重规划，三滞才暂停。轮次是示意。
 
 ## 外部知识
 
@@ -90,6 +102,10 @@ bin/b3ehive compete --question-type precision \
 ```
 
 runner 取自 `B3EHIVE_AGENT_RUNNER`；`--mock` 为空跑。
+
+![使用：按工作选编排](docs/diagrams/use.gif)
+
+skill 亮起时，日志给出本页的调用句。顺序是示意。
 
 ## 检查
 
