@@ -19,8 +19,9 @@ Public documentation uses paired Markdown files:
 | Understand the v1 to v2 change | [v1 to v2 Migration](migration-v1-v2.md) |
 | Write and review b3ehive documentation | [Writing Style](writing-style.md) |
 
-Animated explainers live in [`diagrams/`](diagrams/). The home page and the
-blueprint lifecycle embed them. Highlight order is illustrative, not a real run.
+Animated explainers live in [`diagrams/`](diagrams/). English pages use the
+`.en.gif` files; Chinese pages use the others. Highlight order is illustrative,
+not a real run.
 
 ## Documents
 
